@@ -1,0 +1,33 @@
+{% extends 'base.html' %}
+{% block title %}Notifications - FindMe{% endblock %}
+{% block content %}
+<div class="page-container">
+    <div class="page-header">
+        <h1><i class="fas fa-bell"></i> Notifications</h1>
+        <p class="page-subtitle">Stay updated on your lost &amp; found activity</p>
+    </div>
+
+    {% if notifications %}
+    <ul class="notification-list full">
+        {% for n in notifications %}
+        <li class="notification-item {{ 'unread' if not n[5] else '' }}">
+            <div class="notification-icon">
+                <i class="fas fa-{% if n[4] == 'match' %}link{% elif n[4] == 'recovery' %}hand-holding{% elif n[4] == 'success' %}check-circle{% elif n[4] == 'warning' %}exclamation-triangle{% else %}info-circle{% endif %}"></i>
+            </div>
+            <div class="notification-content">
+                <strong>{{ n[2] }}</strong>
+                <p>{{ n[3] }}</p>
+                <small class="text-muted">{{ n[8] }}</small>
+            </div>
+        </li>
+        {% endfor %}
+    </ul>
+    {% else %}
+    <div class="empty-state">
+        <i class="fas fa-bell-slash"></i>
+        <h3>No Notifications</h3>
+        <p>You'll be notified when there are matches or updates</p>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

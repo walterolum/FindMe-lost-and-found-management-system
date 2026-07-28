@@ -1,0 +1,55 @@
+{% extends 'base.html' %}
+{% block title %}Found Items - Admin - FindMe{% endblock %}
+{% block content %}
+<div class="page-container">
+    <div class="page-header">
+        <h1><i class="fas fa-gift"></i> Found Items</h1>
+        <p class="page-subtitle">Manage reported found items</p>
+    </div>
+
+    {% if items %}
+    <div class="table-responsive">
+        <table class="table">
+            <thead>
+                <tr>
+                    <th>Ref</th>
+                    <th>Item</th>
+                    <th>Finder</th>
+                    <th>Category</th>
+                    <th>Date</th>
+                    <th>Status</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for item in items %}
+                <tr data-label="Item: {{ item[3] }}">
+                    <td>{{ item[1] }}</td>
+                    <td><strong>{{ item[3] }}</strong></td>
+                    <td>{{ item[21] or 'N/A' }}</td>
+                    <td>{{ item[22] or 'N/A' }}</td>
+                    <td>{{ item[9] }}</td>
+                    <td><span class="badge badge-{{ item[16] }}">{{ item[16] }}</span></td>
+                    <td>
+                        <form method="POST" action="{{ url_for('admin_edit_found_status', item_id=item[0]) }}" style="display:inline;">
+                            <select name="status" onchange="this.form.submit()" class="form-select form-select-sm">
+                                <option value="reported" {{ 'selected' if item[16] == 'reported' }}>Reported</option>
+                                <option value="under_review" {{ 'selected' if item[16] == 'under_review' }}>Under Review</option>
+                                <option value="potential_match" {{ 'selected' if item[16] == 'potential_match' }}>Potential Match</option>
+                                <option value="match_pending_approval" {{ 'selected' if item[16] == 'match_pending_approval' }}>Match Pending</option>
+                                <option value="match_approved" {{ 'selected' if item[16] == 'match_approved' }}>Approved</option>
+                                <option value="recovered" {{ 'selected' if item[16] == 'recovered' }}>Recovered</option>
+                                <option value="closed" {{ 'selected' if item[16] == 'closed' }}>Closed</option>
+                            </select>
+                        </form>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% else %}
+    <div class="empty-state"><i class="fas fa-gift"></i><p>No found items reported</p></div>
+    {% endif %}
+</div>
+{% endblock %}

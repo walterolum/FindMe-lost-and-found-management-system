@@ -1,0 +1,52 @@
+{% extends 'base.html' %}
+{% block title %}Verification Requests - FindMe{% endblock %}
+{% block content %}
+<div class="page-container">
+    <div class="page-header">
+        <h1><i class="fas fa-id-card"></i> Verification Requests</h1>
+        <p class="page-subtitle">Review and process identity verification requests</p>
+    </div>
+
+    {% if verifications %}
+    <div class="table-responsive">
+        <table class="table">
+            <thead>
+                <tr>
+                    <th>Match</th>
+                    <th>Requester</th>
+                    <th>Claimer</th>
+                    <th>Claimer Info</th>
+                    <th>Secret ID</th>
+                    <th>Status</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for v in verifications %}
+                <tr data-label="Match: {{ v[16] }} vs {{ v[18] }}">
+                    <td><strong>{{ v[16] }} vs {{ v[18] }}</strong></td>
+                    <td>{{ v[20] }}</td>
+                    <td>{{ v[4] }}</td>
+                    <td>{{ v[5] }}, {{ v[6] }}</td>
+                    <td><code style="background:var(--bg-tertiary);padding:4px 8px;border-radius:var(--radius-sm);">{{ v[8] }}</code></td>
+                    <td><span class="badge badge-{{ v[9] }}">{{ v[9] }}</span></td>
+                    <td>
+                        {% if v[9] == 'pending' %}
+                        <form method="POST" action="{{ url_for('admin_approve_verification', ver_id=v[0]) }}" style="display:inline;">
+                            <button type="submit" class="btn btn-sm btn-success">Approve</button>
+                        </form>
+                        <form method="POST" action="{{ url_for('admin_reject_verification', ver_id=v[0]) }}" style="display:inline;">
+                            <button type="submit" class="btn btn-sm btn-danger">Reject</button>
+                        </form>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% else %}
+    <div class="empty-state"><i class="fas fa-id-card"></i><p>No pending verification requests</p></div>
+    {% endif %}
+</div>
+{% endblock %}

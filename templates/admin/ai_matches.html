@@ -1,0 +1,98 @@
+{% extends 'base.html' %}
+{% block title %}AI Match Review - FindMe{% endblock %}
+{% block content %}
+<div class="page-container">
+    <div class="page-header">
+        <h1><i class="fas fa-brain"></i> AI Match Review</h1>
+        <p class="page-subtitle">Review and approve potential matches between lost and found items</p>
+    </div>
+
+    <div class="filter-bar">
+        <a href="{{ url_for('admin_matches', status='pending') }}" class="btn btn-sm {% if status_filter == 'pending' %}btn-accent{% else %}btn-outline{% endif %}">Pending</a>
+        <a href="{{ url_for('admin_matches', status='approved') }}" class="btn btn-sm {% if status_filter == 'approved' %}btn-success{% else %}btn-outline{% endif %}">Approved</a>
+        <a href="{{ url_for('admin_matches', status='rejected') }}" class="btn btn-sm {% if status_filter == 'rejected' %}btn-danger{% else %}btn-outline{% endif %}">Rejected</a>
+        <a href="{{ url_for('admin_matches', status='all') }}" class="btn btn-sm {% if status_filter not in ('pending','approved','rejected') %}btn-secondary{% else %}btn-outline{% endif %}">All</a>
+    </div>
+
+    {% if matches %}
+    {% for m in matches %}
+    <div class="match-review-card">
+        <div class="match-review-header">
+            <div class="match-confidence-badge">
+                <span class="score-medium">{{ m[3] }}%</span>
+                <span class="badge badge-{{ m[4] }}">{{ m[4].replace('_', ' ').title() }}</span>
+            </div>
+            <span class="badge badge-{{ m[6] }}">{{ m[6].upper() }}</span>
+        </div>
+
+        <div class="match-compare">
+            <div class="match-compare-item">
+                <div class="match-compare-label lost-label"><i class="fas fa-exclamation-triangle"></i> Lost Item</div>
+                {% if m[15] %}
+                <div class="match-compare-image">
+                    <img src="{{ url_for('serve_image', filename=m[15]) }}" alt="{{ m[13] }}">
+                </div>
+                {% else %}
+                <div class="match-compare-image no-image"><i class="fas fa-image"></i><span>No Image</span></div>
+                {% endif %}
+                <div class="match-compare-details">
+                    <h4>{{ m[13] }}</h4>
+                    <p><strong>Ref:</strong> {{ m[12] }}</p>
+                    <p><strong>Color:</strong> {{ m[14] or 'N/A' }}</p>
+                    <p><strong>Reporter:</strong> {{ m[20] or 'N/A' }}</p>
+                </div>
+            </div>
+
+            <div class="match-compare-arrow">
+                <i class="fas fa-arrows-alt-h"></i>
+            </div>
+
+            <div class="match-compare-item">
+                <div class="match-compare-label found-label"><i class="fas fa-search"></i> Found Item</div>
+                {% if m[19] %}
+                <div class="match-compare-image">
+                    <img src="{{ url_for('serve_image', filename=m[19]) }}" alt="{{ m[17] }}">
+                </div>
+                {% else %}
+                <div class="match-compare-image no-image"><i class="fas fa-image"></i><span>No Image</span></div>
+                {% endif %}
+                <div class="match-compare-details">
+                    <h4>{{ m[17] }}</h4>
+                    <p><strong>Ref:</strong> {{ m[16] }}</p>
+                    <p><strong>Color:</strong> {{ m[18] or 'N/A' }}</p>
+                    <p><strong>Finder:</strong> {{ m[21] or 'N/A' }}</p>
+                </div>
+            </div>
+        </div>
+
+        {% if m[5] %}
+        <div class="match-explanation">
+            <h4><i class="fas fa-robot"></i> AI Analysis</h4>
+            <pre>{{ m[5] }}</pre>
+        </div>
+        {% endif %}
+
+        {% if m[6] == 'pending' %}
+        <div class="match-actions">
+            <form method="POST" action="{{ url_for('admin_approve_match', match_id=m[0]) }}">
+                <button type="submit" class="btn btn-success" onclick="return confirm('Approve this match?')">
+                    <i class="fas fa-check"></i> Approve
+                </button>
+            </form>
+            <form method="POST" action="{{ url_for('admin_reject_match', match_id=m[0]) }}">
+                <button type="submit" class="btn btn-danger" onclick="return confirm('Reject this match?')">
+                    <i class="fas fa-times"></i> Reject
+                </button>
+            </form>
+        </div>
+        {% endif %}
+    </div>
+    {% endfor %}
+    {% else %}
+    <div class="empty-state">
+        <i class="fas fa-brain"></i>
+        <p>No matches to review</p>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

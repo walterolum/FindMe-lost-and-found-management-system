@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>About FindMe - Cavendish University Uganda</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <script>
+        (function(){
+            var t=localStorage.getItem('findme-theme');
+            if(!t) t=window.matchMedia('(prefers-color-scheme:dark)').matches?'dark':'light';
+            document.documentElement.setAttribute('data-theme',t);
+        })();
+    </script>
+</head>
+<body class="no-sidebar">
+    <nav class="navbar" id="publicNavbar">
+        <div class="nav-container">
+            <a href="{{ url_for('index') }}" class="nav-brand"><i class="fas fa-search"></i> FindMe</a>
+            <button class="nav-toggle" id="navToggle"><i class="fas fa-bars"></i></button>
+            <ul class="nav-links" id="navLinks">
+                <li><a href="{{ url_for('index') }}">Home</a></li>
+                <li><a href="{{ url_for('about') }}">About</a></li>
+                <li><a href="{{ url_for('login') }}">Login</a></li>
+                <li><a href="{{ url_for('register') }}" class="btn-nav">Get Started</a></li>
+                <li><button type="button" class="theme-toggle" title="Toggle theme"><i class="fas fa-moon"></i></button></li>
+            </ul>
+        </div>
+    </nav>
+
+    <section class="section">
+        <div class="container">
+            <div class="page-header" style="text-align:center;margin-bottom:var(--space-8);">
+                <h1 style="display:flex;align-items:center;justify-content:center;gap:var(--space-3);"><i class="fas fa-info-circle"></i> About FindMe</h1>
+                <p class="page-subtitle" style="max-width:600px;margin:var(--space-4) auto 0;">
+                    Cavendish University Uganda's AI-Powered Lost and Found Platform
+                </p>
+            </div>
+
+            <div class="feature-grid" style="margin-bottom:var(--space-12);">
+                <div class="feature-card">
+                    <div class="feature-row">
+                        <div class="feature-icon" style="background: var(--gradient-primary);"><i class="fas fa-bullseye"></i></div>
+                        <h3>Our Mission</h3>
+                    </div>
+                    <p>FindMe helps the Cavendish University community report, search, match, verify and recover lost property efficiently and securely.</p>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-row">
+                        <div class="feature-icon" style="background: var(--gradient-accent);"><i class="fas fa-shield-halved"></i></div>
+                        <h3>Security &amp; Privacy</h3>
+                    </div>
+                    <p>Sensitive information is protected until an administrator approves a match. Contact details are never exposed publicly without verification.</p>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-row">
+                        <div class="feature-icon" style="background: var(--gradient-info);"><i class="fas fa-microchip"></i></div>
+                        <h3>Technology</h3>
+                    </div>
+                    <p>Built with Python, Flask, MySQL, and an AI-assisted matching engine designed for academic demonstration.</p>
+                </div>
+            </div>
+
+            <h2 class="section-title" style="text-align:center;margin-bottom:var(--space-3);">How It Works</h2>
+            <p class="section-subtitle" style="text-align:center;margin-bottom:var(--space-8);">From report to recovery in four simple steps</p>
+            <div class="workflow-steps">
+                <div class="step-card">
+                    <div class="step-number">1</div>
+                    <div class="step-icon"><i class="fas fa-file-alt"></i></div>
+                    <h3>Report</h3>
+                    <p>Report lost or found items with details and images.</p>
+                </div>
+                <div class="step-connector"><i class="fas fa-arrow-right"></i></div>
+                <div class="step-card">
+                    <div class="step-number">2</div>
+                    <div class="step-icon"><i class="fas fa-robot"></i></div>
+                    <h3>Match</h3>
+                    <p>AI analyzes reports and identifies potential matches.</p>
+                </div>
+                <div class="step-connector"><i class="fas fa-arrow-right"></i></div>
+                <div class="step-card">
+                    <div class="step-number">3</div>
+                    <div class="step-icon"><i class="fas fa-check-double"></i></div>
+                    <h3>Verify</h3>
+                    <p>Administrators review and approve matches.</p>
+                </div>
+                <div class="step-connector"><i class="fas fa-arrow-right"></i></div>
+                <div class="step-card">
+                    <div class="step-number">4</div>
+                    <div class="step-icon"><i class="fas fa-handshake"></i></div>
+                    <h3>Recover</h3>
+                    <p>Owners receive recovery information to collect items.</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <footer class="footer">
+        <div class="footer-container">
+            <p>&copy; 2026 FindMe - Cavendish University Uganda</p>
+        </div>
+    </footer>
+    <script src="{{ url_for('static', filename='js/main.js') }}"></script>
+</body>
+</html>

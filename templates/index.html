@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FindMe - Lost &amp; Found System | Cavendish University Uganda</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <script>
+        (function(){
+            var t=localStorage.getItem('findme-theme');
+            if(!t) t=window.matchMedia('(prefers-color-scheme:dark)').matches?'dark':'light';
+            document.documentElement.setAttribute('data-theme',t);
+        })();
+    </script>
+</head>
+<body class="no-sidebar">
+    <!-- Navbar -->
+    <nav class="navbar" id="publicNavbar">
+        <div class="nav-container">
+            <a href="{{ url_for('index') }}" class="nav-brand">
+                <i class="fas fa-search"></i> FindMe
+            </a>
+            <button class="nav-toggle" id="navToggle"><i class="fas fa-bars"></i></button>
+            <ul class="nav-links" id="navLinks">
+                <li><a href="{{ url_for('index') }}">Home</a></li>
+                <li><a href="{{ url_for('about') }}">About</a></li>
+                <li><a href="{{ url_for('login') }}">Login</a></li>
+                <li><a href="{{ url_for('register') }}" class="btn-nav">Get Started</a></li>
+                <li><button type="button" class="theme-toggle" title="Toggle theme"><i class="fas fa-moon"></i></button></li>
+            </ul>
+        </div>
+    </nav>
+
+    <!-- Hero Section -->
+    <section class="hero">
+        <div class="hero-content">
+            <h1 class="hero-title">
+                Lost Something? <span class="gradient-text">Find It.</span>
+            </h1>
+            <p class="hero-subtitle">
+                Smart AI-powered lost and found system for Cavendish University students.
+                Report, track, and recover your belongings with intelligent matching.
+            </p>
+            <div class="hero-actions">
+                <a href="{{ url_for('report_lost') }}" class="btn btn-danger btn-lg">
+                    <i class="fas fa-exclamation-triangle"></i> Report Lost
+                </a>
+                <a href="{{ url_for('report_found') }}" class="btn btn-success btn-lg">
+                    <i class="fas fa-hand-holding"></i> Report Found
+                </a>
+                <a href="{{ url_for('search') }}" class="btn btn-light btn-lg">
+                    <i class="fas fa-search"></i> Search Items
+                </a>
+            </div>
+            <div class="hero-stats">
+                <div class="hero-stat">
+                    <span class="hero-stat-number">100%</span>
+                    <span class="hero-stat-label">Free Service</span>
+                </div>
+                <div class="hero-stat">
+                    <span class="hero-stat-number">24/7</span>
+                    <span class="hero-stat-label">AI Monitoring</span>
+                </div>
+                <div class="hero-stat">
+                    <span class="hero-stat-number">~90%</span>
+                    <span class="hero-stat-label">Match Rate</span>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- How It Works -->
+    <section class="section">
+        <div class="container">
+            <h2 class="section-title">How It Works</h2>
+            <p class="section-subtitle">Three simple steps to recover your belongings</p>
+            <div class="workflow-steps">
+                <div class="step-card">
+                    <div class="step-number">1</div>
+                    <div class="step-icon"><i class="fas fa-file-alt"></i></div>
+                    <h3>Report</h3>
+                    <p>Fill out a quick form with item details, description, and location. Takes less than a minute.</p>
+                </div>
+                <div class="step-connector"><i class="fas fa-arrow-right"></i></div>
+                <div class="step-card">
+                    <div class="step-number">2</div>
+                    <div class="step-icon"><i class="fas fa-robot"></i></div>
+                    <h3>AI Matching</h3>
+                    <p>Our AI instantly scans new reports and finds potential matches based on description, category, and location.</p>
+                </div>
+                <div class="step-connector"><i class="fas fa-arrow-right"></i></div>
+                <div class="step-card">
+                    <div class="step-number">3</div>
+                    <div class="step-icon"><i class="fas fa-handshake"></i></div>
+                    <h3>Recover</h3>
+                    <p>View matches, connect with the reporter, and arrange pickup at a convenient campus location.</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Features Grid -->
+    <section class="section section-alt">
+        <div class="container">
+            <h2 class="section-title">Why Choose FindMe?</h2>
+            <p class="section-subtitle">Built by students, for students</p>
+            <div class="feature-grid">
+                <div class="feature-card">
+                    <div class="feature-row">
+                        <div class="feature-icon" style="background: var(--gradient-primary);">
+                            <i class="fas fa-brain"></i>
+                        </div>
+                        <h3>AI-Powered Matching</h3>
+                    </div>
+                    <p>Intelligent algorithms analyze descriptions, categories, and locations to find your lost items automatically.</p>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-row">
+                        <div class="feature-icon" style="background: var(--gradient-success);">
+                            <i class="fas fa-shield-halved"></i>
+                        </div>
+                        <h3>Verified Community</h3>
+                    </div>
+                    <p>University email verification ensures only real Cavendish students can use the platform.</p>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-row">
+                        <div class="feature-icon" style="background: var(--gradient-warning);">
+                            <i class="fas fa-bolt"></i>
+                        </div>
+                        <h3>Instant Notifications</h3>
+                    </div>
+                    <p>Get email alerts the moment a potential match is found. Never miss a recovery opportunity.</p>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-row">
+                        <div class="feature-icon" style="background: var(--gradient-danger);">
+                            <i class="fas fa-map-marker-alt"></i>
+                        </div>
+                        <h3>Location Tracking</h3>
+                    </div>
+                    <p>Pinpoint where items were lost or found across campus for easier recovery.</p>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-row">
+                        <div class="feature-icon" style="background: var(--gradient-info);">
+                            <i class="fas fa-clock"></i>
+                        </div>
+                        <h3>Real-Time Status</h3>
+                    </div>
+                    <p>Track your reports from submission through matching to recovery with live updates.</p>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-row">
+                        <div class="feature-icon" style="background: var(--gradient-accent);">
+                            <i class="fas fa-lock"></i>
+                        </div>
+                        <h3>Privacy First</h3>
+                    </div>
+                    <p>Contact info is shared only when you choose to connect. Your data stays protected.</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- CTA Section -->
+    <section class="section" style="background: var(--neutral-900); color: white; text-align: center; padding: var(--space-16) var(--space-4);">
+        <div class="container">
+            <h2 style="font-size: var(--text-3xl); margin-bottom: var(--space-4); color: white;">Ready to Find Your Lost Items?</h2>
+            <p style="font-size: var(--text-lg); opacity: 0.85; margin-bottom: var(--space-8); max-width: 600px; margin-left: auto; margin-right: auto; color: rgba(255,255,255,0.85);">
+                Join the Cavendish University community and let our AI help you recover your belongings.
+            </p>
+            <div class="hero-actions" style="justify-content: center;">
+                <a href="{{ url_for('register') }}" class="btn btn-light btn-lg">Get Started Free</a>
+                <a href="{{ url_for('about') }}" class="btn btn-outline-light btn-lg">Learn More</a>
+            </div>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <footer class="footer">
+        <div class="footer-container">
+            <p>&copy; {{ now.year if now else '2026' }} FindMe - Cavendish University Uganda. All rights reserved.</p>
+        </div>
+    </footer>
+
+    <script src="{{ url_for('static', filename='js/main.js') }}"></script>
+</body>
+</html>

@@ -1,0 +1,151 @@
+{% extends 'base.html' %}
+{% block title %}Admin Dashboard - FindMe{% endblock %}
+{% block content %}
+<div class="page-container">
+    <div class="page-header">
+        <h1><i class="fas fa-cogs"></i> Administrator Dashboard</h1>
+        <p class="page-subtitle">System overview and management</p>
+    </div>
+
+    <div class="stat-grid">
+        <div class="stat-card">
+            <div class="stat-icon" style="background: var(--gradient-primary);"><i class="fas fa-users"></i></div>
+            <div class="stat-number">{{ total_users }}</div>
+            <div class="stat-label">Total Users</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-icon" style="background: var(--gradient-info);"><i class="fas fa-user-graduate"></i></div>
+            <div class="stat-number">{{ total_students }}</div>
+            <div class="stat-label">Students</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-icon" style="background: var(--gradient-success);"><i class="fas fa-chalkboard-teacher"></i></div>
+            <div class="stat-number">{{ total_lecturers }}</div>
+            <div class="stat-label">Lecturers</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-icon" style="background: var(--gradient-accent);"><i class="fas fa-user-shield"></i></div>
+            <div class="stat-number">{{ total_admins }}</div>
+            <div class="stat-label">Admins</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-icon" style="background: var(--gradient-danger);"><i class="fas fa-exclamation-triangle"></i></div>
+            <div class="stat-number">{{ total_lost }}</div>
+            <div class="stat-label">Lost Items</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-icon" style="background: var(--gradient-success);"><i class="fas fa-gift"></i></div>
+            <div class="stat-number">{{ total_found }}</div>
+            <div class="stat-label">Found Items</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-icon" style="background: var(--gradient-accent);"><i class="fas fa-brain"></i></div>
+            <div class="stat-number">{{ pending_matches }}</div>
+            <div class="stat-label">Pending Matches</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-icon" style="background: var(--gradient-primary);"><i class="fas fa-check-circle"></i></div>
+            <div class="stat-number">{{ approved_matches }}</div>
+            <div class="stat-label">Approved Matches</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-icon" style="background: var(--gradient-info);"><i class="fas fa-hand-holding"></i></div>
+            <div class="stat-number">{{ recovered }}</div>
+            <div class="stat-label">Recovered</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-icon" style="background: var(--gradient-warning);"><i class="fas fa-clock"></i></div>
+            <div class="stat-number">{{ pending_reports }}</div>
+            <div class="stat-label">Pending Reports</div>
+        </div>
+    </div>
+
+    <div class="dash-grid">
+        <div class="dash-card">
+            <div class="dash-card-header">
+                <h3><i class="fas fa-exclamation-triangle"></i> Recent Lost Items</h3>
+            </div>
+            {% if recent_lost %}
+            <div class="table-responsive">
+                <table class="table">
+                    <thead><tr><th>Ref</th><th>Item</th><th>Date</th><th>Status</th></tr></thead>
+                    <tbody>
+                    {% for item in recent_lost %}
+                    <tr data-label="Ref: {{ item[1] }}">
+                        <td>{{ item[1] }}</td><td>{{ item[4] }}</td><td>{{ item[12] }}</td>
+                        <td><span class="badge badge-{{ item[19] }}">{{ item[19] }}</span></td>
+                    </tr>
+                    {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% else %}
+            <div class="empty-state"><i class="fas fa-inbox"></i><p>No lost items</p></div>
+            {% endif %}
+        </div>
+
+        <div class="dash-card">
+            <div class="dash-card-header">
+                <h3><i class="fas fa-gift"></i> Recent Found Items</h3>
+            </div>
+            {% if recent_found %}
+            <div class="table-responsive">
+                <table class="table">
+                    <thead><tr><th>Ref</th><th>Item</th><th>Date</th><th>Status</th></tr></thead>
+                    <tbody>
+                    {% for item in recent_found %}
+                    <tr data-label="Ref: {{ item[1] }}">
+                        <td>{{ item[1] }}</td><td>{{ item[4] }}</td><td>{{ item[14] }}</td>
+                        <td><span class="badge badge-{{ item[19] }}">{{ item[19] }}</span></td>
+                    </tr>
+                    {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% else %}
+            <div class="empty-state"><i class="fas fa-inbox"></i><p>No found items</p></div>
+            {% endif %}
+        </div>
+
+        <div class="dash-card">
+            <div class="dash-card-header">
+                <h3><i class="fas fa-brain"></i> Pending AI Matches</h3>
+                <a href="{{ url_for('admin_matches') }}" class="btn btn-sm">View All</a>
+            </div>
+            {% if pending_match_list %}
+            <div class="table-responsive">
+                <table class="table">
+                    <thead><tr><th>Lost Ref</th><th>Found Ref</th><th>Confidence</th><th>Actions</th></tr></thead>
+                    <tbody>
+                    {% for m in pending_match_list %}
+                    <tr>
+                        <td>{{ m[3] }}</td><td>{{ m[4] }}</td><td>{{ m[7] }}%</td>
+                        <td><a href="{{ url_for('match_detail', match_id=m[0]) }}" class="btn btn-sm btn-accent">Review</a></td>
+                    </tr>
+                    {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% else %}
+            <div class="empty-state"><i class="fas fa-robot"></i><p>No pending matches</p></div>
+            {% endif %}
+        </div>
+
+        <div class="dash-card">
+            <div class="dash-card-header">
+                <h3><i class="fas fa-history"></i> Recent Activity</h3>
+                <a href="{{ url_for('admin_activity_logs') }}" class="btn btn-sm">View All</a>
+            </div>
+            {% if recent_logs %}
+            <ul class="activity-list">
+                {% for log in recent_logs %}
+                <li><strong>{{ log[0] }}</strong>: {{ log[1] }} - <small class="text-muted">{{ log[2] }}</small></li>
+                {% endfor %}
+            </ul>
+            {% else %}
+            <div class="empty-state"><i class="fas fa-history"></i><p>No recent activity</p></div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}

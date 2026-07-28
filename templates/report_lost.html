@@ -1,0 +1,138 @@
+{% extends 'base.html' %}
+{% block title %}Report Lost Item - FindMe{% endblock %}
+{% block content %}
+<div class="page-container">
+    <div class="page-header">
+        <h1><i class="fas fa-exclamation-triangle"></i> Report Lost Item</h1>
+        <p class="page-subtitle">Provide as much detail as possible to help identify your lost item</p>
+    </div>
+
+    <form method="POST" action="{{ url_for('report_lost') }}" enctype="multipart/form-data" class="report-form">
+        <div class="form-section">
+            <h3 class="form-section-title"><i class="fas fa-user"></i> Reporter Information</h3>
+            <div class="form-grid-2">
+                <div class="form-group">
+                    <label for="full_name">Full Name</label>
+                    <input type="text" id="full_name" name="full_name" value="{{ session.full_name }}" readonly>
+                </div>
+                <div class="form-group">
+                    <label for="email">Email</label>
+                    <input type="email" id="email" name="email" value="{{ session.email }}" readonly>
+                </div>
+            </div>
+            <div class="form-grid-2">
+                <div class="form-group">
+                    <label for="phone">Phone</label>
+                    <input type="text" id="phone" name="phone" value="{{ session.get('phone', '') }}" readonly>
+                </div>
+                <div class="form-group">
+                    <label for="student_staff_id">Student/Staff ID</label>
+                    <input type="text" id="student_staff_id" name="student_staff_id" value="{{ session.get('student_staff_id', '') }}" readonly>
+                </div>
+            </div>
+        </div>
+
+        <div class="form-section">
+            <h3 class="form-section-title"><i class="fas fa-box"></i> Item Information</h3>
+            <div class="form-group">
+                <label for="item_name">Item Name <span class="required">*</span></label>
+                <input type="text" id="item_name" name="item_name" required placeholder="e.g. Samsung Galaxy Phone">
+            </div>
+            <div class="form-grid-2">
+                <div class="form-group">
+                    <label for="category_id">Category</label>
+                    <select id="category_id" name="category_id">
+                        <option value="">-- Select Category --</option>
+                        {% for cat in categories %}
+                        <option value="{{ cat[0] }}">{{ cat[1] }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="brand">Brand</label>
+                    <input type="text" id="brand" name="brand" placeholder="e.g. Samsung">
+                </div>
+            </div>
+            <div class="form-grid-2">
+                <div class="form-group">
+                    <label for="model">Model</label>
+                    <input type="text" id="model" name="model" placeholder="e.g. Galaxy S23">
+                </div>
+                <div class="form-group">
+                    <label for="color">Color</label>
+                    <input type="text" id="color" name="color" placeholder="e.g. Black">
+                </div>
+            </div>
+            <div class="form-grid-2">
+                <div class="form-group">
+                    <label for="serial_number">Serial Number</label>
+                    <input type="text" id="serial_number" name="serial_number" placeholder="If applicable">
+                </div>
+                <div class="form-group">
+                    <label for="approximate_value">Approximate Value (UGX)</label>
+                    <input type="number" id="approximate_value" name="approximate_value" placeholder="Optional">
+                </div>
+            </div>
+            <div class="form-group">
+                <label for="unique_marks">Unique Identifying Marks</label>
+                <textarea id="unique_marks" name="unique_marks" rows="2" placeholder="Scratches, stickers, engravings, etc."></textarea>
+            </div>
+            <div class="form-group">
+                <label for="description">Description <span class="required">*</span></label>
+                <textarea id="description" name="description" rows="4" required placeholder="Describe the item in detail — color, size, condition, etc."></textarea>
+            </div>
+        </div>
+
+        <div class="form-section">
+            <h3 class="form-section-title"><i class="fas fa-calendar"></i> Loss Details</h3>
+            <div class="form-grid-2">
+                <div class="form-group">
+                    <label for="date_lost">Date Lost <span class="required">*</span></label>
+                    <input type="date" id="date_lost" name="date_lost" required>
+                </div>
+                <div class="form-group">
+                    <label for="time_lost">Time Lost</label>
+                    <input type="time" id="time_lost" name="time_lost">
+                </div>
+            </div>
+            <div class="form-grid-2">
+                <div class="form-group">
+                    <label for="location_id">Location</label>
+                    <select id="location_id" name="location_id">
+                        <option value="">-- Select Location --</option>
+                        {% for loc in locations %}
+                        <option value="{{ loc[0] }}">{{ loc[1] }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="location_detail">Specific Location Detail</label>
+                    <input type="text" id="location_detail" name="location_detail" placeholder="e.g. Near the main library entrance">
+                </div>
+            </div>
+            <div class="form-group">
+                <label for="additional_details">Additional Details</label>
+                <textarea id="additional_details" name="additional_details" rows="3" placeholder="Any other relevant information"></textarea>
+            </div>
+        </div>
+
+        <div class="form-section">
+            <h3 class="form-section-title"><i class="fas fa-image"></i> Image (Optional)</h3>
+            <div class="form-group">
+                <label for="image" class="file-input-label">
+                    <i class="fas fa-cloud-upload-alt"></i> Choose an image or drag it here
+                </label>
+                <input type="file" id="image" name="image" accept=".jpg,.jpeg,.png,.webp" onchange="previewImage(event)">
+                <small class="file-input-hint">Accepted: JPG, PNG, WEBP. Max: 16MB</small>
+            </div>
+            <div class="image-preview" id="imagePreview" style="display:none;">
+                <img id="previewImg" src="" alt="Preview">
+            </div>
+        </div>
+
+        <button type="submit" class="btn btn-accent btn-lg btn-block">
+            <i class="fas fa-paper-plane"></i> Submit Lost Item Report
+        </button>
+    </form>
+</div>
+{% endblock %}

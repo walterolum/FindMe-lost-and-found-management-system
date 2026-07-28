@@ -1,0 +1,56 @@
+{% extends 'base.html' %}
+{% block title %}Course Management - FindMe{% endblock %}
+{% block content %}
+<div class="page-container">
+    <div class="page-header">
+        <h1><i class="fas fa-book"></i> Course/Program Management</h1>
+        <p class="page-subtitle">Manage academic programs</p>
+    </div>
+
+    <div class="dash-card">
+        <form method="POST" style="display:flex;gap:var(--space-4);align-items:end;flex-wrap:wrap;">
+            <div class="form-group flex-grow">
+                <label>Course Name</label>
+                <input type="text" name="name" placeholder="e.g. Bachelor of Computer Science" required>
+            </div>
+            <div class="form-group" style="max-width:160px;">
+                <label>Course Code</label>
+                <input type="text" name="code" placeholder="e.g. BCS">
+            </div>
+            <div class="form-group" style="max-width:220px;">
+                <label>Faculty</label>
+                <select name="faculty_id" required>
+                    <option value="">-- Select Faculty --</option>
+                    {% for f in faculties %}
+                    <option value="{{ f[0] }}">{{ f[1] }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <button type="submit" class="btn btn-accent"><i class="fas fa-plus"></i> Add</button>
+        </form>
+    </div>
+
+    {% if courses %}
+    <div class="table-responsive">
+        <table class="table">
+            <thead><tr><th>ID</th><th>Name</th><th>Code</th><th>Faculty</th><th>Status</th><th>Actions</th></tr></thead>
+            <tbody>
+                {% for c in courses %}
+                <tr data-label="Course: {{ c[1] }}">
+                    <td>{{ c[0] }}</td><td><strong>{{ c[1] }}</strong></td><td>{{ c[2] or 'N/A' }}</td><td>{{ c[7] or 'N/A' }}</td>
+                    <td><span class="badge badge-{{ 'active' if c[4] else 'inactive' }}">{{ 'Active' if c[4] else 'Inactive' }}</span></td>
+                    <td>
+                        <form method="POST" action="{{ url_for('admin_toggle_course', course_id=c[0]) }}" style="display:inline;">
+                            <button type="submit" class="btn btn-sm {{ 'btn-warning' if c[4] else 'btn-success' }}">{{ 'Deactivate' if c[4] else 'Activate' }}</button>
+                        </form>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% else %}
+    <div class="empty-state"><i class="fas fa-book"></i><p>No courses added</p></div>
+    {% endif %}
+</div>
+{% endblock %}

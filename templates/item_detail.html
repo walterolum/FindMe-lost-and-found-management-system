@@ -1,0 +1,83 @@
+{% extends 'base.html' %}
+{% block title %}Item Detail - FindMe{% endblock %}
+{% block content %}
+<div class="page-container">
+    <a href="javascript:history.back()" class="btn btn-sm btn-outline" style="margin-bottom:var(--space-4);">
+        <i class="fas fa-arrow-left"></i> Back
+    </a>
+
+    {% set cat_map = {} %}
+    {% for c in categories %}{% set _ = cat_map.update({c[0]: c[1]}) %}{% endfor %}
+    {% set loc_map = {} %}
+    {% for l in locations %}{% set _ = loc_map.update({l[0]: l[1]}) %}{% endfor %}
+
+    {% set img_idx = 17 if item_type == 'lost' else 15 %}
+    {% set status_idx = 18 if item_type == 'lost' else 16 %}
+
+    <div class="page-header">
+        <h1><i class="fas fa-{{ 'exclamation-triangle' if item_type == 'lost' else 'search' }}"></i> {{ item[3] }}</h1>
+        <span class="badge badge-{{ item[status_idx] }}">{{ item[status_idx] }}</span>
+    </div>
+
+    {% if item[img_idx] %}
+    <div class="item-hero-image">
+        <img src="{{ url_for('serve_image', filename=item[img_idx]) }}" alt="{{ item[3] }}">
+    </div>
+    {% endif %}
+
+    <div class="detail-grid">
+        <div class="dash-card">
+            <div class="dash-card-header">
+                <h3><i class="fas fa-info-circle"></i> Item Information</h3>
+            </div>
+            <table class="table">
+                <tr><th>Reference</th><td>{{ item[1] }}</td></tr>
+                <tr><th>Category</th><td>{{ cat_map.get(item[4], 'N/A') }}</td></tr>
+                <tr><th>Brand</th><td>{{ item[5] or 'N/A' }}</td></tr>
+                <tr><th>Model</th><td>{{ item[6] or 'N/A' }}</td></tr>
+                <tr><th>Color</th><td>{{ item[7] or 'N/A' }}</td></tr>
+                <tr><th>Description</th><td>{{ item[10] or 'N/A' }}</td></tr>
+                {% if item_type == 'lost' %}
+                <tr><th>Serial Number</th><td>{{ item[8] or 'N/A' }}</td></tr>
+                <tr><th>Unique Marks</th><td>{{ item[9] or 'N/A' }}</td></tr>
+                <tr><th>Approximate Value</th><td>{{ item[11] or 'N/A' }}</td></tr>
+                {% endif %}
+            </table>
+        </div>
+
+        <div class="dash-card">
+            <div class="dash-card-header">
+                <h3><i class="fas fa-map-marker-alt"></i> Location &amp; Date</h3>
+            </div>
+            <table class="table">
+                {% if item_type == 'lost' %}
+                <tr><th>Date Lost</th><td>{{ item[12] }}</td></tr>
+                <tr><th>Time Lost</th><td>{{ item[13] or 'N/A' }}</td></tr>
+                <tr><th>Location</th><td>{{ loc_map.get(item[14], 'N/A') }}</td></tr>
+                <tr><th>Location Detail</th><td>{{ item[15] or 'N/A' }}</td></tr>
+                <tr><th>Additional Details</th><td>{{ item[16] or 'N/A' }}</td></tr>
+                {% else %}
+                <tr><th>Date Found</th><td>{{ item[9] }}</td></tr>
+                <tr><th>Time Found</th><td>{{ item[10] or 'N/A' }}</td></tr>
+                <tr><th>Location Found</th><td>{{ loc_map.get(item[11], 'N/A') }}</td></tr>
+                <tr><th>Location Detail</th><td>{{ item[12] or 'N/A' }}</td></tr>
+                <tr><th>Current Location</th><td>{{ item[13] or 'N/A' }}</td></tr>
+                <tr><th>Additional Details</th><td>{{ item[14] or 'N/A' }}</td></tr>
+                {% endif %}
+            </table>
+        </div>
+
+        {% if reporter %}
+        <div class="dash-card">
+            <div class="dash-card-header">
+                <h3><i class="fas fa-user"></i> {{ 'Reporter' if item_type == 'lost' else 'Finder' }}</h3>
+            </div>
+            <table class="table">
+                <tr><th>Name</th><td>{{ reporter[0] }}</td></tr>
+                <tr><th>Email</th><td>{{ reporter[1] }}</td></tr>
+            </table>
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

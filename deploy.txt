@@ -1,0 +1,44 @@
+=== DEPLOY TO PYTHONANYWHERE (FREE) ===
+
+1. Sign up at https://www.pythonanywhere.com
+
+2. Open a Bash console and run:
+   git clone https://github.com/YOUR_USERNAME/findme.git
+   cd findme
+   pip install --user virtualenv
+   virtualenv venv
+   source venv/bin/activate
+   pip install -r requirements.txt
+   mkdir -p static/uploads/avatars
+   mkdir -p static/uploads/lost
+   mkdir -p static/uploads/found
+
+3. Go to Databases tab -> Initialize MySQL -> set password
+   Open MySQL console and run:
+   CREATE DATABASE yourusername$findme_db;
+   USE yourusername$findme_db;
+   SOURCE /home/yourusername/findme/schema.sql;
+
+4. Update config.py:
+   MYSQL_USER = 'yourusername'
+   MYSQL_HOST = 'yourusername.mysql.pythonanywhere-services.com'
+   MYSQL_PASSWORD = 'your-mysql-password'
+   SECRET_KEY = 'generate-a-random-secret-key'
+
+5. Go to Web tab -> Add web app -> Manual config -> Python 3.10
+   Source code: /home/yourusername/findme
+   Working directory: /home/yourusername/findme
+   WSGI file: point to /home/yourusername/findme/wsgi.py
+   Virtualenv: /home/yourusername/findme/venv
+
+   Static files:
+   /static/ -> /home/yourusername/findme/static/
+   /uploads/ -> /home/yourusername/findme/static/uploads/
+
+6. Create admin user in MySQL console:
+   USE yourusername$findme_db;
+   INSERT INTO users (full_name, email, password_hash, role_id, is_active, email_verified)
+   VALUES ('System Admin', 'admin@cavendish.ac.ug', '$2b$12$LJ3m4ys3Lk0TSwHnbfOMa.VCJ6G5i4j4k5k4k5k4k5k4k5k4k5O', 3, TRUE, TRUE);
+   (default password: password123)
+
+7. Reload the web app -> Your site is live at yourusername.pythonanywhere.com

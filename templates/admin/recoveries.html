@@ -1,0 +1,47 @@
+{% extends 'base.html' %}
+{% block title %}Recoveries - Admin - FindMe{% endblock %}
+{% block content %}
+<div class="page-container">
+    <div class="page-header">
+        <h1><i class="fas fa-hand-holding"></i> Recoveries</h1>
+        <p class="page-subtitle">Track item recovery progress</p>
+    </div>
+
+    {% if recoveries %}
+    <div class="table-responsive">
+        <table class="table">
+            <thead>
+                <tr>
+                    <th>Match</th>
+                    <th>Lost Item</th>
+                    <th>Found Item</th>
+                    <th>Recovered By</th>
+                    <th>Status</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for r in recoveries %}
+                <tr data-label="Match: {{ r[10] }} vs {{ r[12] }}">
+                    <td><strong>{{ r[10] }} vs {{ r[12] }}</strong></td>
+                    <td>{{ r[11] }}</td>
+                    <td>{{ r[13] }}</td>
+                    <td>{{ r[14] }}</td>
+                    <td><span class="badge badge-{{ r[6] }}">{{ r[6] }}</span></td>
+                    <td>
+                        {% if r[6] == 'pending' %}
+                        <form method="POST" action="{{ url_for('admin_complete_recovery', recovery_id=r[0]) }}" style="display:inline;">
+                            <button type="submit" class="btn btn-sm btn-success">Mark Completed</button>
+                        </form>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% else %}
+    <div class="empty-state"><i class="fas fa-hand-holding"></i><p>No recoveries recorded</p></div>
+    {% endif %}
+</div>
+{% endblock %}

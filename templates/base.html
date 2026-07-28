@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}FindMe{% endblock %} - Cavendish University Uganda</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <script>
+        (function(){
+            var t=localStorage.getItem('findme-theme');
+            if(!t) t=window.matchMedia('(prefers-color-scheme:dark)').matches?'dark':'light';
+            document.documentElement.setAttribute('data-theme',t);
+        })();
+    </script>
+</head>
+<body>
+    {% if session.user_id %}
+    {# ── Sidebar for authenticated users ── #}
+    <aside class="sidebar" id="sidebar">
+        <a href="{{ url_for('dashboard') }}" class="sidebar-brand">
+            <span class="brand-icon"><i class="fas fa-search"></i></span>
+            <span class="brand-text">FindMe</span>
+        </a>
+        <div class="sidebar-user">
+            <div class="user-avatar">
+                {% if session.get('profile_image') %}
+                    <img src="{{ url_for('serve_image', filename=session.profile_image) }}" alt="Profile" class="avatar-img">
+                {% else %}
+                    {{ session.full_name[0] if session.full_name else 'U' }}
+                {% endif %}
+            </div>
+            <div class="user-name">{{ session.full_name }}</div>
+            <div class="user-role">{{ session.get('role_name', 'User') }}</div>
+        </div>
+        <nav class="sidebar-nav">
+            <div class="nav-section">Main</div>
+            <a href="{{ url_for('dashboard') }}" class="{{ 'active' if request.endpoint == 'dashboard' }}">
+                <i class="fas fa-home"></i> <span>Dashboard</span>
+            </a>
+            <a href="{{ url_for('report_lost') }}" class="{{ 'active' if request.endpoint == 'report_lost' }}">
+                <i class="fas fa-exclamation-triangle"></i> <span>Report Lost</span>
+            </a>
+            <a href="{{ url_for('report_found') }}" class="{{ 'active' if request.endpoint == 'report_found' }}">
+                <i class="fas fa-hand-holding"></i> <span>Report Found</span>
+            </a>
+            <a href="{{ url_for('search') }}" class="{{ 'active' if request.endpoint == 'search' }}">
+                <i class="fas fa-search"></i> <span>Search Items</span>
+            </a>
+
+            <div class="nav-section">Activity</div>
+            <a href="{{ url_for('my_reports') }}" class="{{ 'active' if request.endpoint == 'my_reports' }}">
+                <i class="fas fa-file-alt"></i> <span>My Reports</span>
+            </a>
+            <a href="{{ url_for('matches') }}" class="{{ 'active' if request.endpoint in ('matches', 'match_detail') }}">
+                <i class="fas fa-brain"></i> <span>AI Matches</span>
+            </a>
+            {% if session.get('role_name') == 'Administrator' %}
+            <div class="nav-section">Administration</div>
+            <a href="{{ url_for('admin_dashboard') }}" class="{{ 'active' if request.endpoint == 'admin_dashboard' }}">
+                <i class="fas fa-chart-pie"></i> <span>Admin Dashboard</span>
+            </a>
+            <a href="{{ url_for('admin_matches') }}" class="{{ 'active' if request.endpoint == 'admin_matches' }}">
+                <i class="fas fa-robot"></i> <span>Match Review</span>
+            </a>
+            <a href="{{ url_for('admin_lost_items') }}" class="{{ 'active' if request.endpoint == 'admin_lost_items' }}">
+                <i class="fas fa-exclamation-circle"></i> <span>Lost Items</span>
+            </a>
+            <a href="{{ url_for('admin_found_items') }}" class="{{ 'active' if request.endpoint == 'admin_found_items' }}">
+                <i class="fas fa-gift"></i> <span>Found Items</span>
+            </a>
+            <a href="{{ url_for('admin_users') }}" class="{{ 'active' if request.endpoint == 'admin_users' }}">
+                <i class="fas fa-users"></i> <span>Users</span>
+            </a>
+            <a href="{{ url_for('admin_activity_logs') }}" class="{{ 'active' if request.endpoint == 'admin_activity_logs' }}">
+                <i class="fas fa-history"></i> <span>Activity Logs</span>
+            </a>
+            {% endif %}
+        </nav>
+        <div class="sidebar-footer">
+            <a href="{{ url_for('profile') }}"><i class="fas fa-user-circle"></i> <span>Profile</span></a>
+            {% if session.get('role_name') == 'Administrator' %}
+            <a href="{{ url_for('admin_settings') }}"><i class="fas fa-cog"></i> <span>Settings</span></a>
+            {% endif %}
+            <a href="{{ url_for('logout') }}"><i class="fas fa-sign-out-alt"></i> <span>Logout</span></a>
+        </div>
+    </aside>
+    <div class="sidebar-overlay" id="sidebarOverlay"></div>
+    {% endif %}
+
+    <button class="sidebar-toggle" id="sidebarToggle" style="display:none;">
+        <i class="fas fa-bars"></i>
+    </button>
+
+    {% if not session.user_id %}
+    {# ── Top navbar for public pages ── #}
+    <nav class="navbar" id="publicNavbar">
+        <div class="nav-container">
+            <a href="{{ url_for('index') }}" class="nav-brand">
+                <i class="fas fa-search"></i> FindMe
+            </a>
+            <button class="nav-toggle" id="navToggle"><i class="fas fa-bars"></i></button>
+            <ul class="nav-links" id="navLinks">
+                <li><a href="{{ url_for('index') }}">Home</a></li>
+                <li><a href="{{ url_for('about') }}">About</a></li>
+                <li><a href="{{ url_for('login') }}">Login</a></li>
+                <li><a href="{{ url_for('register') }}" class="btn-nav">Get Started</a></li>
+                <li><button type="button" class="theme-toggle" title="Toggle theme"><i class="fas fa-moon"></i></button></li>
+            </ul>
+        </div>
+    </nav>
+    {% else %}
+    {# ── Minimal top bar for authenticated users ── #}
+    <nav class="navbar" id="publicNavbar" style="margin-left:var(--sidebar-width);transition:margin-left var(--duration-slow) var(--ease-out);">
+        <div class="nav-container">
+            <div style="display:flex;align-items:center;gap:var(--space-3);">
+                <button class="sidebar-toggle" id="sidebarToggle" style="display:none;position:static;">
+                    <i class="fas fa-bars"></i>
+                </button>
+                <span style="font-weight:var(--font-semibold);color:var(--text-primary);">{% block page_title %}{% endblock %}</span>
+            </div>
+            <div style="display:flex;align-items:center;gap:var(--space-3);">
+                <button type="button" class="theme-toggle" title="Toggle theme"><i class="fas fa-moon"></i></button>
+                <a href="{{ url_for('notifications') }}" style="color:var(--text-muted);font-size:var(--text-lg);position:relative;">
+                    <i class="fas fa-bell"></i>
+                    {% if unread_count and unread_count > 0 %}
+                    <span style="position:absolute;top:-4px;right:-6px;background:var(--danger);color:white;font-size:9px;font-weight:700;padding:1px 5px;border-radius:99px;">{{ unread_count }}</span>
+                    {% endif %}
+                </a>
+            </div>
+        </div>
+    </nav>
+    {% endif %}
+
+    <main class="{% if session.user_id %}layout-with-sidebar{% endif %}">
+        {% if session.user_id %}
+        <div class="main-area">
+        {% else %}
+        <div>
+        {% endif %}
+            {% with messages = get_flashed_messages(with_categories=true) %}
+                {% if messages %}
+                    {% for category, message in messages %}
+                        <div class="flash-message flash-{{ category }}" style="max-width:1400px;margin:0 auto var(--space-4);">
+                            <i class="fas fa-{{ 'check-circle' if category == 'success' else 'exclamation-circle' if category == 'danger' else 'exclamation-triangle' if category == 'warning' else 'info-circle' }}"></i>
+                            {{ message }}
+                            <button class="flash-close" onclick="this.parentElement.remove()">&times;</button>
+                        </div>
+                    {% endfor %}
+                {% endif %}
+            {% endwith %}
+
+            {% block content %}{% endblock %}
+        </div>
+    </main>
+
+    {% if not session.user_id %}
+    <footer class="footer">
+        <div class="footer-container">
+            <p>&copy; {{ now.year if now else '2026' }} FindMe - Cavendish University Uganda. All rights reserved.</p>
+        </div>
+    </footer>
+    {% endif %}
+
+    <script src="{{ url_for('static', filename='js/main.js') }}"></script>
+    {% block scripts %}{% endblock %}
+</body>
+</html>

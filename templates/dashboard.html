@@ -1,0 +1,185 @@
+{% extends 'base.html' %}
+{% block title %}Dashboard - FindMe{% endblock %}
+{% block content %}
+<div class="page-container">
+    <!-- Welcome Section -->
+    <div class="welcome-section">
+        <div class="welcome-content">
+            <h1 class="welcome-title">Welcome back, {{ session.full_name.split()[0] }}</h1>
+            <p class="welcome-subtitle">Here's what's happening with your lost &amp; found items today.</p>
+            <div class="welcome-actions">
+                <a href="{{ url_for('report_lost') }}" class="btn btn-danger">
+                    <i class="fas fa-exclamation-triangle"></i> Report Lost Item
+                </a>
+                <a href="{{ url_for('report_found') }}" class="btn btn-success">
+                    <i class="fas fa-hand-holding"></i> Report Found Item
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <!-- Stats Grid -->
+    <div class="stat-grid">
+        <a href="{{ url_for('my_reports') }}" class="stat-card stat-card-link">
+            <div class="stat-icon" style="background: var(--gradient-danger);">
+                <i class="fas fa-exclamation-circle"></i>
+            </div>
+            <div class="stat-number">{{ stats.total_lost }}</div>
+            <div class="stat-label">Lost Items</div>
+        </a>
+        <a href="{{ url_for('my_reports') }}" class="stat-card stat-card-link">
+            <div class="stat-icon" style="background: var(--gradient-success);">
+                <i class="fas fa-search"></i>
+            </div>
+            <div class="stat-number">{{ stats.total_found }}</div>
+            <div class="stat-label">Found Items</div>
+        </a>
+        <a href="{{ url_for('matches') }}" class="stat-card stat-card-link">
+            <div class="stat-icon" style="background: var(--gradient-accent);">
+                <i class="fas fa-brain"></i>
+            </div>
+            <div class="stat-number">{{ stats.pending_matches }}</div>
+            <div class="stat-label">Pending Matches</div>
+        </a>
+        <a href="{{ url_for('matches') }}" class="stat-card stat-card-link">
+            <div class="stat-icon" style="background: var(--gradient-primary);">
+                <i class="fas fa-check-circle"></i>
+            </div>
+            <div class="stat-number">{{ stats.approved_matches }}</div>
+            <div class="stat-label">Approved</div>
+        </a>
+        <div class="stat-card">
+            <div class="stat-icon" style="background: var(--gradient-info);">
+                <i class="fas fa-hand-holding"></i>
+            </div>
+            <div class="stat-number">{{ stats.recovered }}</div>
+            <div class="stat-label">Recovered</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-icon" style="background: var(--gradient-warning);">
+                <i class="fas fa-clock"></i>
+            </div>
+            <div class="stat-number">{{ stats.pending_reports }}</div>
+            <div class="stat-label">Pending</div>
+        </div>
+    </div>
+
+    <!-- Quick Actions -->
+    <div class="section-header">
+        <h2>Quick Actions</h2>
+    </div>
+    <div class="action-grid">
+        <a href="{{ url_for('report_lost') }}" class="action-card">
+            <div class="action-icon" style="background: var(--gradient-danger);"><i class="fas fa-exclamation-triangle"></i></div>
+            <span>Report Lost</span>
+        </a>
+        <a href="{{ url_for('report_found') }}" class="action-card">
+            <div class="action-icon" style="background: var(--gradient-success);"><i class="fas fa-hand-holding"></i></div>
+            <span>Report Found</span>
+        </a>
+        <a href="{{ url_for('search') }}" class="action-card">
+            <div class="action-icon" style="background: var(--gradient-info);"><i class="fas fa-search"></i></div>
+            <span>Search Items</span>
+        </a>
+        <a href="{{ url_for('matches') }}" class="action-card">
+            <div class="action-icon" style="background: var(--gradient-accent);"><i class="fas fa-brain"></i></div>
+            <span>AI Matches</span>
+        </a>
+    </div>
+
+    <!-- Dashboard Cards -->
+    <div class="dash-grid">
+        <div class="dash-card">
+            <div class="dash-card-header">
+                <h3><i class="fas fa-exclamation-triangle"></i> Recent Lost Items</h3>
+                <a href="{{ url_for('my_reports') }}" class="btn btn-sm">View All</a>
+            </div>
+            {% if recent_lost %}
+            {% for item in recent_lost %}
+            <a href="{{ url_for('item_detail', item_type='lost', item_id=item[0]) }}" class="dash-item">
+                <div class="dash-item-info">
+                    <span class="dash-item-name">{{ item[3] }}</span>
+                    <span class="dash-item-meta">{{ item[1] }} &middot; {{ item[12] }}</span>
+                </div>
+                <span class="badge badge-{{ item[18] }}">{{ item[18] }}</span>
+            </a>
+            {% endfor %}
+            {% else %}
+            <div class="empty-state">
+                <i class="fas fa-inbox"></i>
+                <p>No lost items reported yet</p>
+            </div>
+            {% endif %}
+        </div>
+
+        <div class="dash-card">
+            <div class="dash-card-header">
+                <h3><i class="fas fa-search"></i> Recent Found Items</h3>
+                <a href="{{ url_for('my_reports') }}" class="btn btn-sm">View All</a>
+            </div>
+            {% if recent_found %}
+            {% for item in recent_found %}
+            <a href="{{ url_for('item_detail', item_type='found', item_id=item[0]) }}" class="dash-item">
+                <div class="dash-item-info">
+                    <span class="dash-item-name">{{ item[3] }}</span>
+                    <span class="dash-item-meta">{{ item[1] }} &middot; {{ item[9] }}</span>
+                </div>
+                <span class="badge badge-{{ item[16] }}">{{ item[16] }}</span>
+            </a>
+            {% endfor %}
+            {% else %}
+            <div class="empty-state">
+                <i class="fas fa-inbox"></i>
+                <p>No found items reported yet</p>
+            </div>
+            {% endif %}
+        </div>
+
+        <div class="dash-card">
+            <div class="dash-card-header">
+                <h3><i class="fas fa-brain"></i> Recent Matches</h3>
+                <a href="{{ url_for('matches') }}" class="btn btn-sm">View All</a>
+            </div>
+            {% if recent_matches %}
+            {% for m in recent_matches %}
+            <a href="{{ url_for('match_detail', match_id=m[0]) }}" class="dash-item">
+                <div class="dash-item-info">
+                    <span class="dash-item-name">{{ m[15] }} &harr; {{ m[38] }}</span>
+                    <span class="dash-item-meta">Confidence: {{ m[3] }}%</span>
+                </div>
+                <span class="badge badge-{{ m[6] }}">{{ m[6] }}</span>
+            </a>
+            {% endfor %}
+            {% else %}
+            <div class="empty-state">
+                <i class="fas fa-robot"></i>
+                <p>No matches yet - AI is scanning</p>
+            </div>
+            {% endif %}
+        </div>
+
+        <div class="dash-card">
+            <div class="dash-card-header">
+                <h3><i class="fas fa-bell"></i> Notifications</h3>
+                <a href="{{ url_for('notifications') }}" class="btn btn-sm">View All</a>
+            </div>
+            {% if notifications %}
+            {% for n in notifications %}
+            <div class="dash-item">
+                <div class="dash-item-info">
+                    <span class="dash-item-name">{{ n[2] }}</span>
+                    <span class="dash-item-meta">{{ n[3] }}</span>
+                </div>
+                <small class="text-muted">{{ n[8] }}</small>
+            </div>
+            {% endfor %}
+            {% else %}
+            <div class="empty-state">
+                <i class="fas fa-bell-slash"></i>
+                <p>No new notifications</p>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}

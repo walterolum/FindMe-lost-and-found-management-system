@@ -1,0 +1,96 @@
+{% extends 'base.html' %}
+{% block title %}Match Details - FindMe{% endblock %}
+{% block content %}
+<div class="page-container">
+    <a href="javascript:history.back()" class="btn btn-sm btn-outline" style="margin-bottom:var(--space-4);">
+        <i class="fas fa-arrow-left"></i> Back
+    </a>
+
+    <div class="page-header">
+        <h1><i class="fas fa-brain"></i> Match Details</h1>
+    </div>
+
+    <div class="match-score-banner">
+        <div class="score-circle">
+            <span class="score-value">{{ match[3] }}%</span>
+            <span class="score-desc">Confidence</span>
+        </div>
+        <div class="score-info">
+            <span class="badge badge-{{ match[4] }}">{{ match[4].replace('_', ' ').title() }}</span>
+            <span class="badge badge-{{ match[6] }}">{{ match[6].upper() }}</span>
+        </div>
+    </div>
+
+    <div class="compare-section">
+        <div class="compare-card">
+            <div class="compare-label lost-label"><i class="fas fa-exclamation-triangle"></i> Lost Item</div>
+            {% if match[17] %}
+            <div class="compare-image">
+                <img src="{{ url_for('serve_image', filename=match[17]) }}" alt="Lost Item">
+            </div>
+            {% else %}
+            <div class="compare-image no-image"><i class="fas fa-image"></i><span>No Image</span></div>
+            {% endif %}
+            <div class="compare-details">
+                <table class="table">
+                    <tr><th>Reference</th><td>{{ match[12] }}</td></tr>
+                    <tr><th>Item Name</th><td>{{ match[13] }}</td></tr>
+                    <tr><th>Description</th><td>{{ match[14] or 'N/A' }}</td></tr>
+                    <tr><th>Color</th><td>{{ match[15] or 'N/A' }}</td></tr>
+                    <tr><th>Brand</th><td>{{ match[16] or 'N/A' }}</td></tr>
+                    <tr><th>Location</th><td>{{ match[18] or 'N/A' }}</td></tr>
+                    <tr><th>Reporter</th><td>{{ match[26] or 'N/A' }}</td></tr>
+                </table>
+            </div>
+        </div>
+
+        <div class="compare-vs">
+            <span>VS</span>
+        </div>
+
+        <div class="compare-card">
+            <div class="compare-label found-label"><i class="fas fa-search"></i> Found Item</div>
+            {% if match[24] %}
+            <div class="compare-image">
+                <img src="{{ url_for('serve_image', filename=match[24]) }}" alt="Found Item">
+            </div>
+            {% else %}
+            <div class="compare-image no-image"><i class="fas fa-image"></i><span>No Image</span></div>
+            {% endif %}
+            <div class="compare-details">
+                <table class="table">
+                    <tr><th>Reference</th><td>{{ match[19] }}</td></tr>
+                    <tr><th>Item Name</th><td>{{ match[20] }}</td></tr>
+                    <tr><th>Description</th><td>{{ match[21] or 'N/A' }}</td></tr>
+                    <tr><th>Color</th><td>{{ match[22] or 'N/A' }}</td></tr>
+                    <tr><th>Brand</th><td>{{ match[23] or 'N/A' }}</td></tr>
+                    <tr><th>Location</th><td>{{ match[25] or 'N/A' }}</td></tr>
+                    <tr><th>Finder</th><td>{{ match[27] or 'N/A' }}</td></tr>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    {% if match[5] %}
+    <div class="ai-explanation">
+        <h3><i class="fas fa-robot"></i> AI Match Explanation</h3>
+        <pre>{{ match[5] }}</pre>
+    </div>
+    {% endif %}
+
+    {% if match[6] == 'pending' %}
+    <div class="match-actions" style="justify-content:center; margin-top:var(--space-6);">
+        <form method="POST" action="{{ url_for('admin_approve_match', match_id=match[0]) }}">
+            <button type="submit" class="btn btn-success btn-lg" onclick="return confirm('Approve this match?')">
+                <i class="fas fa-check"></i> Approve Match
+            </button>
+        </form>
+        <form method="POST" action="{{ url_for('admin_reject_match', match_id=match[0]) }}">
+            <button type="submit" class="btn btn-danger btn-lg" onclick="return confirm('Reject this match?')">
+                <i class="fas fa-times"></i> Reject Match
+            </button>
+        </form>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

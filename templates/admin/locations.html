@@ -1,0 +1,47 @@
+{% extends 'base.html' %}
+{% block title %}Location Management - FindMe{% endblock %}
+{% block content %}
+<div class="page-container">
+    <div class="page-header">
+        <h1><i class="fas fa-map-marker-alt"></i> Location Management</h1>
+        <p class="page-subtitle">Manage campus locations</p>
+    </div>
+
+    <div class="dash-card">
+        <form method="POST" class="form-grid-2" style="gap: var(--space-4); align-items: end;">
+            <div class="form-group">
+                <label>Location Name</label>
+                <input type="text" name="name" placeholder="e.g. Library Building" required>
+            </div>
+            <div class="form-group">
+                <label>Description</label>
+                <input type="text" name="description" placeholder="Optional description">
+            </div>
+            <button type="submit" class="btn btn-accent"><i class="fas fa-plus"></i> Add Location</button>
+        </form>
+    </div>
+
+    {% if locations %}
+    <div class="table-responsive">
+        <table class="table">
+            <thead><tr><th>ID</th><th>Name</th><th>Description</th><th>Status</th><th>Actions</th></tr></thead>
+            <tbody>
+                {% for l in locations %}
+                <tr data-label="Location: {{ l[1] }}">
+                    <td>{{ l[0] }}</td><td><strong>{{ l[1] }}</strong></td><td>{{ l[2] or 'N/A' }}</td>
+                    <td><span class="badge badge-{{ 'active' if l[3] else 'inactive' }}">{{ 'Active' if l[3] else 'Inactive' }}</span></td>
+                    <td>
+                        <form method="POST" action="{{ url_for('admin_toggle_location', loc_id=l[0]) }}" style="display:inline;">
+                            <button type="submit" class="btn btn-sm {{ 'btn-warning' if l[3] else 'btn-success' }}">{{ 'Deactivate' if l[3] else 'Activate' }}</button>
+                        </form>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% else %}
+    <div class="empty-state"><i class="fas fa-map-marker-alt"></i><p>No locations added</p></div>
+    {% endif %}
+</div>
+{% endblock %}

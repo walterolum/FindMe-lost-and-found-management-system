@@ -1,0 +1,7 @@
+Flask==3.0.3
+flask-mysqldb==2.0.0
+bcrypt==4.2.1
+Pillow==11.1.0
+python-pptx==1.0.2
+python-docx==1.1.2
+Flask-Mail==0.9.1

@@ -1,0 +1,47 @@
+{% extends 'base.html' %}
+{% block title %}Category Management - FindMe{% endblock %}
+{% block content %}
+<div class="page-container">
+    <div class="page-header">
+        <h1><i class="fas fa-tags"></i> Category Management</h1>
+        <p class="page-subtitle">Manage item categories</p>
+    </div>
+
+    <div class="dash-card">
+        <form method="POST" class="form-grid-2" style="gap: var(--space-4); align-items: end;">
+            <div class="form-group">
+                <label>Category Name</label>
+                <input type="text" name="name" placeholder="e.g. Electronics" required>
+            </div>
+            <div class="form-group">
+                <label>Description</label>
+                <input type="text" name="description" placeholder="Optional description">
+            </div>
+            <button type="submit" class="btn btn-accent"><i class="fas fa-plus"></i> Add Category</button>
+        </form>
+    </div>
+
+    {% if categories %}
+    <div class="table-responsive">
+        <table class="table">
+            <thead><tr><th>ID</th><th>Name</th><th>Description</th><th>Status</th><th>Actions</th></tr></thead>
+            <tbody>
+                {% for c in categories %}
+                <tr data-label="Category: {{ c[1] }}">
+                    <td>{{ c[0] }}</td><td><strong>{{ c[1] }}</strong></td><td>{{ c[2] or 'N/A' }}</td>
+                    <td><span class="badge badge-{{ 'active' if c[3] else 'inactive' }}">{{ 'Active' if c[3] else 'Inactive' }}</span></td>
+                    <td>
+                        <form method="POST" action="{{ url_for('admin_toggle_category', cat_id=c[0]) }}" style="display:inline;">
+                            <button type="submit" class="btn btn-sm {{ 'btn-warning' if c[3] else 'btn-success' }}">{{ 'Deactivate' if c[3] else 'Activate' }}</button>
+                        </form>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% else %}
+    <div class="empty-state"><i class="fas fa-tags"></i><p>No categories created</p></div>
+    {% endif %}
+</div>
+{% endblock %}

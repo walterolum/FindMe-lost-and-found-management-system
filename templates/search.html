@@ -1,0 +1,99 @@
+{% extends 'base.html' %}
+{% block title %}Search Items - FindMe{% endblock %}
+{% block content %}
+<div class="page-container">
+    <div class="page-header">
+        <h1><i class="fas fa-search"></i> Search Items</h1>
+        <p class="page-subtitle">Find lost or found items across campus</p>
+    </div>
+
+    <form method="GET" action="{{ url_for('search') }}" class="search-form">
+        <div class="search-row">
+            <div class="form-group flex-grow">
+                <input type="text" name="q" value="{{ q }}" placeholder="Search by name, brand, color, description...">
+            </div>
+            <div class="form-group">
+                <select name="category_id">
+                    <option value="">All Categories</option>
+                    {% for cat in categories %}
+                    <option value="{{ cat[0] }}" {{ 'selected' if category_id == cat[0] }}>{{ cat[1] }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="form-group">
+                <select name="location_id">
+                    <option value="">All Locations</option>
+                    {% for loc in locations %}
+                    <option value="{{ loc[0] }}" {{ 'selected' if location_id == loc[0] }}>{{ loc[1] }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="form-group">
+                <select name="type">
+                    <option value="">All Types</option>
+                    <option value="lost" {{ 'selected' if report_type == 'lost' }}>Lost</option>
+                    <option value="found" {{ 'selected' if report_type == 'found' }}>Found</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <select name="status">
+                    <option value="">All Statuses</option>
+                    <option value="reported" {{ 'selected' if status == 'reported' }}>Reported</option>
+                    <option value="under_review">Under Review</option>
+                    <option value="potential_match">Potential Match</option>
+                    <option value="match_pending_approval">Pending Approval</option>
+                    <option value="match_approved">Approved</option>
+                    <option value="recovered">Recovered</option>
+                </select>
+            </div>
+            <button type="submit" class="btn btn-accent"><i class="fas fa-search"></i> Search</button>
+        </div>
+    </form>
+
+    {% if results %}
+    <h3 class="results-count">{{ results|length }} Result(s) Found</h3>
+    <div class="table-responsive">
+        <table class="table">
+            <thead>
+                <tr>
+                    <th>Type</th>
+                    <th>Ref</th>
+                    <th>Item</th>
+                    <th>Brand</th>
+                    <th>Color</th>
+                    <th>Date</th>
+                    <th>Status</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for r in results %}
+                <tr data-label="{{ r[0]|upper }}: {{ r[3] }}">
+                    <td><span class="badge badge-{{ 'lost' if r[0] == 'lost' else 'found' }}">{{ r[0]|upper }}</span></td>
+                    <td>{{ r[2] }}</td>
+                    <td><strong>{{ r[3] }}</strong></td>
+                    <td>{{ r[5] or 'N/A' }}</td>
+                    <td>{{ r[6] or 'N/A' }}</td>
+                    <td>{{ r[8] }}</td>
+                    <td><span class="badge badge-{{ r[11] }}">{{ r[11] }}</span></td>
+                    <td><a href="{{ url_for('item_detail', item_type=r[0], item_id=r[1]) }}" class="btn btn-sm btn-accent">View</a></td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% elif q or category_id or location_id %}
+    <div class="empty-state">
+        <i class="fas fa-search"></i>
+        <h3>No Results Found</h3>
+        <p>Try adjusting your search terms or filters</p>
+    </div>
+    {% else %}
+    <div class="empty-state">
+        <i class="fas fa-search"></i>
+        <h3>Search for Items</h3>
+        <p>Enter a search term or use filters to find items</p>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

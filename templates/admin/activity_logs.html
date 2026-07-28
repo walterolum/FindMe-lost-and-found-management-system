@@ -1,0 +1,37 @@
+{% extends 'base.html' %}
+{% block title %}Activity Logs - FindMe{% endblock %}
+{% block content %}
+<div class="page-container">
+    <div class="page-header">
+        <h1><i class="fas fa-history"></i> Activity Logs</h1>
+        <p class="page-subtitle">System activity and audit trail</p>
+    </div>
+
+    {% if logs %}
+    <div class="table-responsive">
+        <table class="table">
+            <thead>
+                <tr>
+                    <th>User</th>
+                    <th>Action</th>
+                    <th>Description</th>
+                    <th>Date</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for log in logs %}
+                <tr data-label="User: {{ log[8] or 'System' }}">
+                    <td><strong>{{ log[8] or 'System' }}</strong></td>
+                    <td><span class="badge badge-info">{{ log[2] }}</span></td>
+                    <td>{{ log[3] }}</td>
+                    <td>{{ log[7] }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% else %}
+    <div class="empty-state"><i class="fas fa-history"></i><p>No activity logs</p></div>
+    {% endif %}
+</div>
+{% endblock %}

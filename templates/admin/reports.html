@@ -1,0 +1,65 @@
+{% extends 'base.html' %}
+{% block title %}Reports & Analytics - FindMe{% endblock %}
+{% block content %}
+<div class="page-container">
+    <div class="page-header">
+        <h1><i class="fas fa-chart-bar"></i> Reports & Analytics</h1>
+        <p class="page-subtitle">System statistics and performance metrics</p>
+    </div>
+
+    <div class="stat-grid">
+        <div class="stat-card">
+            <div class="stat-icon" style="background: var(--gradient-danger);"><i class="fas fa-exclamation-triangle"></i></div>
+            <div class="stat-number">{{ total_lost }}</div>
+            <div class="stat-label">Lost Items</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-icon" style="background: var(--gradient-success);"><i class="fas fa-gift"></i></div>
+            <div class="stat-number">{{ total_found }}</div>
+            <div class="stat-label">Found Items</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-icon" style="background: var(--gradient-accent);"><i class="fas fa-brain"></i></div>
+            <div class="stat-number">{{ pending_matches }}</div>
+            <div class="stat-label">Pending Matches</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-icon" style="background: var(--gradient-primary);"><i class="fas fa-check-circle"></i></div>
+            <div class="stat-number">{{ approved_matches }}</div>
+            <div class="stat-label">Approved Matches</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-icon" style="background: var(--gradient-danger);"><i class="fas fa-times-circle"></i></div>
+            <div class="stat-number">{{ rejected_matches }}</div>
+            <div class="stat-label">Rejected Matches</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-icon" style="background: var(--gradient-info);"><i class="fas fa-hand-holding"></i></div>
+            <div class="stat-number">{{ total_recovered }}</div>
+            <div class="stat-label">Recovered</div>
+        </div>
+    </div>
+
+    <div class="dash-card">
+        <div class="dash-card-header">
+            <h3><i class="fas fa-tags"></i> Items by Category</h3>
+        </div>
+        {% if by_category %}
+        <div class="table-responsive">
+            <table class="table">
+                <thead><tr><th>Category</th><th>Lost</th><th>Found</th></tr></thead>
+                <tbody>
+                    {% for c in by_category %}
+                    <tr data-label="Category: {{ c[0] }}">
+                        <td><strong>{{ c[0] }}</strong></td><td>{{ c[1] }}</td><td>{{ c[2] }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <div class="empty-state"><i class="fas fa-tags"></i><p>No category data</p></div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}
