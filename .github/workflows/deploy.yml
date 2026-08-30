@@ -1,0 +1,81 @@
+name: Auto Deploy FindMe to Connected Hosts
+
+# Automatically deploys to any hosting websites that are connected via secrets.
+# Add secrets in GitHub: Settings -> Secrets and variables -> Actions -> New repository secret
+# See DEPLOY.md for token creation.
+# Connected hosts are auto-detected: if secret is missing, that job is skipped.
+
+on:
+  push:
+    branches: [master, main]
+  workflow_dispatch:
+
+jobs:
+  # Verify app builds before deploying
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - run: pip install -r requirements.txt
+      - run: python -m py_compile app.py config.py wsgi.py
+      - run: python -c "from wsgi import application; print('wsgi ok')"
+      - run: python -c "from wsgi import application; c=application.test_client(); assert c.get('/health').status_code==200; print('health ok')"
+
+  railway:
+    needs: build
+    if: ${{ secrets.RAILWAY_TOKEN != '' }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install Railway CLI
+        run: npm install -g @railway/cli
+      - name: Deploy to Railway
+        env:
+          RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
+        run: |
+          railway up --service FindMe || railway up
+          echo "Railway deployed - check https://railway.app/dashboard"
+
+  render:
+    needs: build
+    if: ${{ secrets.RENDER_API_KEY != '' && secrets.RENDER_SERVICE_ID != '' }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Trigger Render Deploy
+        env:
+          RENDER_API_KEY: ${{ secrets.RENDER_API_KEY }}
+          RENDER_SERVICE_ID: ${{ secrets.RENDER_SERVICE_ID }}
+        run: |
+          curl -X POST "https://api.render.com/v1/services/${RENDER_SERVICE_ID}/deploys" \
+            -H "Authorization: Bearer ${RENDER_API_KEY}" \
+            -H "Content-Type: application/json" \
+            -d '{"clearCache": false}'
+          echo "Render deploy triggered"
+
+  pythonanywhere:
+    needs: build
+    if: ${{ secrets.PA_API_TOKEN != '' && secrets.PA_USERNAME != '' }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Deploy to PythonAnywhere
+        env:
+          PA_API_TOKEN: ${{ secrets.PA_API_TOKEN }}
+          PA_USERNAME: ${{ secrets.PA_USERNAME }}
+        run: |
+          pip install pythonanywhere
+          pa --help || true
+          # Clone or pull via API
+          curl -X POST "https://www.pythonanywhere.com/api/v0/user/${PA_USERNAME}/webapps/" \
+            -H "Authorization: Token ${PA_API_TOKEN}" || true
+          # Reload webapp (assumes app already created)
+          # Find webapp and reload
+          curl -X POST "https://www.pythonanywhere.com/api/v0/user/${PA_USERNAME}/webapps/${PA_USERNAME}.pythonanywhere.com/reload/" \
+            -H "Authorization: Token ${PA_API_TOKEN}" || echo "Manual reload may be needed in Web tab"
+          echo "PythonAnywhere reload triggered - check https://${PA_USERNAME}.pythonanywhere.com/health"
+
+  # Fallback: GitHub Pages for docs (optional)
+  # Deploying Flask+MySQL to Pages is not possible (static only), so we skip.
