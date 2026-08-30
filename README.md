@@ -87,6 +87,55 @@ findme/
 
 **Compatible hosts (Flask + MySQL):** PythonAnywhere (free, built-in MySQL - *recommended*), Render, Railway, Fly.io, DigitalOcean App Platform, Heroku. See [`DEPLOY.md`](DEPLOY.md) and [`deploy.txt`](deploy.txt) for full guide. This repo includes `Procfile`, `render.yaml`, `railway.json`, `Dockerfile`, `docker-compose.yml`, `wsgi.py` (with `pymysql` + `whitenoise`), and `/health` for hosting checks. Quick Docker: `docker-compose up --build` -> http://localhost:5000.
 
+## Automated PythonAnywhere Deployment (GitHub Actions)
+
+Fully automated: **push to `master`/`main` -> GitHub Actions pulls code on PythonAnywhere, updates deps, runs migrations, collects static (if Django), and reloads the webapp**. No manual SSH needed. Uses `deploy.sh` (idempotent, Flask/Django-aware) + PythonAnywhere API.
+
+### How It Works
+1. `deploy.sh` (in repo root) detects framework: `manage.py` -> Django, `app.py`+`wsgi.py` -> Flask (this project), otherwise generic Python.
+2. On PythonAnywhere it: `git pull`, creates/activates `venv`, `pip install -r requirements.txt`, runs `migrate`/`collectstatic` for Django or `init_db.py` check for Flask, ensures `static/uploads`, then reloads via API or `touch` WSGI.
+3. `.github/workflows/pythonanywhere.yml` triggers on push to `master`/`main` (or manual dispatch), creates an API console on PythonAnywhere, runs `bash deploy.sh`, and `POST /api/v0/user/{username}/webapps/{domain}/reload/`.
+
+### Required GitHub Secrets
+Add in GitHub repo: **Settings -> Secrets and variables -> Actions -> New repository secret** (never hardcode):
+
+| Secret | Required | Value | Where to find |
+|--------|----------|-------|---------------|
+| `PA_API_TOKEN` | Yes | PythonAnywhere API token | https://www.pythonanywhere.com/user/YOURNAME/account/#api_token -> **Create new API token** |
+| `PA_USERNAME` | Yes | Your PythonAnywhere username | Your username on PythonAnywhere (e.g., `walterolum`) |
+| `PA_DOMAIN` | No | Webapp domain | Defaults to `YOURNAME.pythonanywhere.com`; set only if you use a custom domain |
+
+Optional for first deploy only: set `RUN_INIT_DB=true` as a secret or in `deploy.sh` call to run `python init_db.py` (destructive - drops DB). Normally migrations are non-destructive.
+
+### PythonAnywhere Setup (One-Time)
+1. Sign up at https://www.pythonanywhere.com
+2. **Bash** console:
+   ```bash
+   git clone https://github.com/walterolum/FindMe-lost-and-found-management-system.git
+   cd FindMe-lost-and-found-management-system
+   # deploy.sh will handle venv, but you can also run manually once:
+   bash deploy.sh
+   ```
+3. **Databases** tab -> create MySQL DB `YOURNAME$findme_db` (host `YOURNAME.mysql.pythonanywhere-services.com`) -> in MySQL console:
+   ```sql
+   CREATE DATABASE YOURNAME$findme_db CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+   ```
+   Then set `.env` (or Secrets) for DB: `MYSQL_HOST`, `MYSQL_USER`, `MYSQL_PASSWORD`, `MYSQL_DB`, `SECRET_KEY`.
+4. **Web** tab -> **Add new web app** -> **Manual Configuration** -> Python 3.11 -> set:
+   - Source code: `/home/YOURNAME/FindMe-lost-and-found-management-system`
+   - Working directory: same
+   - WSGI file: `/var/www/YOURNAME_pythonanywhere_com_wsgi.py` (edit to `from wsgi import application` or point to `/home/YOURNAME/.../wsgi.py`)
+   - Virtualenv: `/home/YOURNAME/FindMe-lost-and-found-management-system/venv`
+   - Static: `/static/` -> `/home/YOURNAME/.../static/`
+5. Add secrets in GitHub as above, then **push to master** -> Actions runs -> site live at `https://YOURNAME.pythonanywhere.com/health`.
+
+### Idempotency & Logging
+- `deploy.sh` is idempotent: `mkdir -p`, `git pull --ff-only` with fallback, `pip install` upgrades, `migrate` is safe to re-run, `touch` reload is safe. Logs to `~/deploy.log` with timestamps and `set -euo pipefail` + `trap` for clear errors.
+- Workflow uses pinned `actions/checkout@v4`, minimal `permissions: contents: read`, `concurrency: pythonanywhere-deploy`, and masks secrets.
+
+### Verify
+- Actions tab -> **Deploy to PythonAnywhere** -> green check -> visit `https://YOURNAME.pythonanywhere.com/health` -> `{"status":"ok"}` -> login `admin@cavendish.ac.ug` / `password123`.
+
 ## Installation Instructions
 
 ### Prerequisites

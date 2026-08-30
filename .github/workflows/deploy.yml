@@ -55,27 +55,8 @@ jobs:
             -d '{"clearCache": false}'
           echo "Render deploy triggered"
 
-  pythonanywhere:
-    needs: build
-    if: ${{ secrets.PA_API_TOKEN != '' && secrets.PA_USERNAME != '' }}
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - name: Deploy to PythonAnywhere
-        env:
-          PA_API_TOKEN: ${{ secrets.PA_API_TOKEN }}
-          PA_USERNAME: ${{ secrets.PA_USERNAME }}
-        run: |
-          pip install pythonanywhere
-          pa --help || true
-          # Clone or pull via API
-          curl -X POST "https://www.pythonanywhere.com/api/v0/user/${PA_USERNAME}/webapps/" \
-            -H "Authorization: Token ${PA_API_TOKEN}" || true
-          # Reload webapp (assumes app already created)
-          # Find webapp and reload
-          curl -X POST "https://www.pythonanywhere.com/api/v0/user/${PA_USERNAME}/webapps/${PA_USERNAME}.pythonanywhere.com/reload/" \
-            -H "Authorization: Token ${PA_API_TOKEN}" || echo "Manual reload may be needed in Web tab"
-          echo "PythonAnywhere reload triggered - check https://${PA_USERNAME}.pythonanywhere.com/health"
+  # PythonAnywhere now handled by dedicated workflow .github/workflows/pythonanywhere.yml
+  # (full idempotent deploy: pull, venv, pip, migrate, collectstatic, reload via API)
 
   # Fallback: GitHub Pages for docs (optional)
   # Deploying Flask+MySQL to Pages is not possible (static only), so we skip.

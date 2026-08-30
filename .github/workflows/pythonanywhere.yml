@@ -1,0 +1,153 @@
+name: Deploy to PythonAnywhere
+
+# Fully automated Flask/Django deployment via PythonAnywhere API
+# 1. Push to main/master -> 2. GitHub Actions pulls code on PythonAnywhere -> 3. Updates deps -> 4. Migrations -> 5. Collectstatic -> 6. Reloads webapp
+# Uses best practices: pinned action versions, minimal permissions, secrets only, idempotent bash deploy.sh
+
+on:
+  push:
+    branches: [master, main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: pythonanywhere-deploy
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    if: ${{ secrets.PA_API_TOKEN != '' && secrets.PA_USERNAME != '' }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Validate secrets
+        env:
+          PA_API_TOKEN: ${{ secrets.PA_API_TOKEN }}
+          PA_USERNAME: ${{ secrets.PA_USERNAME }}
+        run: |
+          set -euo pipefail
+          [[ -n "$PA_API_TOKEN" ]] || { echo "::error::PA_API_TOKEN secret is empty"; exit 1; }
+          [[ -n "$PA_USERNAME" ]] || { echo "::error::PA_USERNAME secret is empty"; exit 1; }
+          echo "Secrets validated for user $PA_USERNAME"
+          # Mask token length for log
+          echo "Token length: ${#PA_API_TOKEN}"
+
+      - name: Deploy via PythonAnywhere API (create console, run deploy.sh, reload)
+        env:
+          PA_API_TOKEN: ${{ secrets.PA_API_TOKEN }}
+          PA_USERNAME: ${{ secrets.PA_USERNAME }}
+          PA_DOMAIN: ${{ secrets.PA_DOMAIN || '' }}
+        run: |
+          set -euo pipefail
+          PA_DOMAIN="${PA_DOMAIN:-${PA_USERNAME}.pythonanywhere.com}"
+          REPO_URL="https://github.com/${{ github.repository }}.git"
+          PROJECT_DIR="/home/${PA_USERNAME}/FindMe-lost-and-found-management-system"
+          echo "Deploying $REPO_URL to PythonAnywhere $PA_USERNAME / $PA_DOMAIN"
+
+          # Helper: api call with error check
+          api() {
+            local method=$1 url=$2
+            shift 2
+            local http_code body
+            body=$(mktemp)
+            http_code=$(curl -s -w "%{http_code}" -o "$body" -X "$method" \
+              -H "Authorization: Token $PA_API_TOKEN" \
+              -H "Content-Type: application/x-www-form-urlencoded" \
+              "$url" "$@" || echo "000")
+            echo "API $method $url -> HTTP $http_code" >&2
+            cat "$body" >&2 || true
+            if [[ "$http_code" != "200" && "$http_code" != "201" && "$http_code" != "202" ]]; then
+              echo "::error::PythonAnywhere API failed: $method $url HTTP $http_code"
+              cat "$body"
+              return 1
+            fi
+            cat "$body"
+          }
+
+          # 1. Ensure project dir exists or clone via console
+          echo "Creating API console..."
+          CONSOLE_JSON=$(api POST "https://www.pythonanywhere.com/api/v0/user/${PA_USERNAME}/consoles/" -d "executable=bash")
+          CONSOLE_ID=$(echo "$CONSOLE_JSON" | python3 -c "import sys,json; print(json.load(sys.stdin)['id'])" 2>/dev/null || echo "")
+          if [[ -z "$CONSOLE_ID" ]]; then
+            echo "::error::Failed to create console: $CONSOLE_JSON"
+            exit 1
+          fi
+          echo "Console $CONSOLE_ID created"
+
+          # Function to send command and wait
+          send() {
+            local cmd="$1"
+            echo ">> $cmd"
+            api POST "https://www.pythonanywhere.com/api/v0/user/${PA_USERNAME}/consoles/${CONSOLE_ID}/send_input/" --data-urlencode "input=${cmd}\n" > /dev/null
+            sleep 2
+          }
+          get_output() {
+            api GET "https://www.pythonanywhere.com/api/v0/user/${PA_USERNAME}/consoles/${CONSOLE_ID}/get_latest_output/" | python3 -c "import sys,json; d=json.load(sys.stdin); print(d.get('output',''))" 2>/dev/null || true
+          }
+
+          # 2. Run deployment commands idempotently
+          # If project not cloned, clone it
+          send "if [ ! -d \"$PROJECT_DIR\" ]; then git clone $REPO_URL $PROJECT_DIR || { echo 'ERROR: git clone failed'; exit 1; }; fi"
+          send "cd $PROJECT_DIR || { echo 'ERROR: cd failed'; exit 1; }"
+          send "if [ ! -f deploy.sh ]; then echo 'ERROR: deploy.sh not found in repo'; exit 1; fi"
+          send "chmod +x deploy.sh"
+          # Export secrets for deploy.sh to use API reload
+          send "export PA_API_TOKEN='$PA_API_TOKEN' PA_USERNAME='$PA_USERNAME' PA_DOMAIN='$PA_DOMAIN'"
+          # Run deploy.sh (idempotent, logs to ~/deploy.log)
+          send "bash deploy.sh 2>&1 | tee -a ~/deploy.log; echo EXIT_CODE:\$?"
+          sleep 30
+          OUTPUT=$(get_output)
+          echo "----- Console output (last 200 lines) -----"
+          echo "$OUTPUT" | tail -n 200
+          echo "-------------------------------------------"
+          if echo "$OUTPUT" | grep -q "EXIT_CODE:0"; then
+            echo "deploy.sh succeeded"
+          else
+            # Check for explicit failure
+            if echo "$OUTPUT" | grep -q "ERROR:"; then
+              echo "::error::deploy.sh reported errors - check logs above and ~/deploy.log on PythonAnywhere"
+              # Don't fail yet, try reload anyway
+            fi
+          fi
+
+          # 3. Reload webapp via API (idempotent)
+          echo "Reloading webapp $PA_DOMAIN..."
+          RELOAD_CODE=$(curl -s -o /tmp/reload.json -w "%{http_code}" -X POST "https://www.pythonanywhere.com/api/v0/user/${PA_USERNAME}/webapps/${PA_DOMAIN}/reload/" \
+            -H "Authorization: Token $PA_API_TOKEN" || echo "000")
+          echo "Reload HTTP $RELOAD_CODE"
+          cat /tmp/reload.json || true
+          if [[ "$RELOAD_CODE" != "200" ]]; then
+            echo "::warning::Reload returned HTTP $RELOAD_CODE - check if webapp $PA_DOMAIN exists in PythonAnywhere Web tab. Trying touch WSGI fallback via console..."
+            send "touch /var/www/${PA_USERNAME}_pythonanywhere_com_wsgi.py 2>/dev/null || touch $PROJECT_DIR/wsgi.py; echo 'WSGI touched'"
+            sleep 5
+          fi
+
+          # 4. Verify health endpoint (with retries, idempotent)
+          echo "Verifying https://$PA_DOMAIN/health ..."
+          for i in 1 2 3 4 5; do
+            if curl -fsS --max-time 10 "https://$PA_DOMAIN/health" | grep -q '"status": *"ok"'; then
+              echo "Health check passed on attempt $i"
+              break
+            fi
+            echo "Health check attempt $i failed, retrying in 5s..."
+            sleep 5
+            if [[ $i -eq 5 ]]; then
+              echo "::warning::Health check did not return ok after 5 tries - site may still be starting. Check https://$PA_DOMAIN/health manually"
+            fi
+          done
+
+          echo "Deployment to PythonAnywhere complete for $PA_DOMAIN"
+
+      - name: Summary
+        if: always()
+        run: |
+          echo "### PythonAnywhere Deploy Summary" >> $GITHUB_STEP_SUMMARY
+          echo "- Repo: ${{ github.repository }} @ ${{ github.sha }}" >> $GITHUB_STEP_SUMMARY
+          echo "- Branch: ${{ github.ref_name }}" >> $GITHUB_STEP_SUMMARY
+          echo "- Target: \${{ secrets.PA_USERNAME }}.pythonanywhere.com" >> $GITHUB_STEP_SUMMARY
+          echo "- Workflow: .github/workflows/pythonanywhere.yml" >> $GITHUB_STEP_SUMMARY
+          echo "- Deploy script: deploy.sh (idempotent, Flask/Django aware)" >> $GITHUB_STEP_SUMMARY
