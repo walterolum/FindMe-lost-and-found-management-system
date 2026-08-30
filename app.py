@@ -1,5 +1,6 @@
 import os
 import secrets
+import threading
 from datetime import datetime, timedelta
 from functools import wraps
 
@@ -33,6 +34,16 @@ def allowed_file(filename):
            filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
 
 
+def _run_matcher_async(item_type, item_id):
+    with app.app_context():
+        try:
+            db = get_db()
+            from ai.matcher import find_potential_matches
+            find_potential_matches(item_type, item_id, db)
+        except Exception:
+            pass
+
+
 def save_image(file, folder=''):
     ext = file.filename.rsplit('.', 1)[1].lower()
     filename = secrets.token_hex(16) + '.' + ext
@@ -62,6 +73,16 @@ def log_activity(user_id, action, description, entity_type=None, entity_id=None)
     )
     db.commit()
     cursor.close()
+
+
+def paginated_query(cursor, base_query, count_query, params, page, per_page=20):
+    offset = (page - 1) * per_page
+    cursor.execute(count_query, params)
+    total = cursor.fetchone()[0]
+    cursor.execute(base_query + ' LIMIT %s OFFSET %s', params + [per_page, offset])
+    items = cursor.fetchall()
+    total_pages = max(1, (total + per_page - 1) // per_page)
+    return items, page, total_pages, total
 
 
 def get_role_name(role_id):
@@ -133,9 +154,10 @@ def generate_reference(prefix, item_type):
         raise ValueError(f"Invalid item type: {item_type}")
     db = get_db()
     cursor = db.cursor()
-    cursor.execute(f"SELECT COUNT(*) FROM {item_type}_items")
-    count = cursor.fetchone()[0] + 1
+    cursor.execute(f"SELECT MAX(id) FROM {item_type}_items")
+    max_id = cursor.fetchone()[0]
     cursor.close()
+    count = (max_id if max_id else 0) + 1
     year = datetime.now().year
     return f"{prefix}-{year}-{count:05d}"
 
@@ -223,7 +245,7 @@ def login():
             session['course_id'] = user[9]
             session['profile_image'] = user[10]
 
-            log_activity(user[0], 'login', 'Userlogged in')
+            log_activity(user[0], 'login', 'User logged in')
             flash('Welcome back!', 'success')
             return redirect(url_for('dashboard'))
         else:
@@ -246,12 +268,15 @@ def register():
         full_name = request.form.get('full_name', '').strip()
         email = request.form.get('email', '').strip()
         phone = request.form.get('phone', '').strip()
-        student_staff_id = request.form.get('student_staff_id', '').strip()
+        student_staff_id = request.form.get('student_id', '').strip() or request.form.get('student_staff_id', '').strip()
         password = request.form.get('password', '')
         confirm_password = request.form.get('confirm_password', '')
         role_name = request.form.get('user_type', 'Student')
         faculty_id = request.form.get('faculty_id')
         course_id = request.form.get('course_id')
+
+        if role_name not in ('Student', 'Lecturer'):
+            role_name = 'Student'
 
         if password != confirm_password:
             flash('Passwords do not match.', 'danger')
@@ -371,6 +396,12 @@ def change_password():
 @app.route('/profile', methods=['GET', 'POST'])
 @login_required
 def profile():
+    return redirect(url_for('settings'))
+
+
+@app.route('/settings', methods=['GET', 'POST'])
+@login_required
+def settings():
     db = get_db()
     cursor = db.cursor()
     cursor.execute('SELECT * FROM users WHERE id = %s', (session['user_id'],))
@@ -382,20 +413,20 @@ def profile():
         student_staff_id = request.form.get('student_staff_id', '').strip()
 
         profile_image = request.files.get('profile_image')
-        image_path = user[13] if user else None
+        image_path = user[11] if user else None
 
         if profile_image and profile_image.filename:
             allowed = {'jpg', 'jpeg', 'png', 'webp'}
             ext = profile_image.filename.rsplit('.', 1)[1].lower() if '.' in profile_image.filename else ''
             if ext not in allowed:
                 flash('Invalid image type. Use JPG, PNG, or WebP.', 'danger')
-                return redirect(url_for('profile'))
+                return redirect(url_for('settings'))
             profile_image.seek(0, 2)
             size = profile_image.tell()
             profile_image.seek(0)
             if size > 5 * 1024 * 1024:
                 flash('Image must be under 5 MB.', 'danger')
-                return redirect(url_for('profile'))
+                return redirect(url_for('settings'))
             image_path = save_image(profile_image, 'avatars')
 
         cursor.execute(
@@ -418,9 +449,13 @@ def profile():
     cursor.execute('SELECT id, name FROM courses WHERE is_active = TRUE ORDER BY name')
     courses = cursor.fetchall()
     role_name = get_role_name(user[6]) if user else 'Unknown'
+    is_admin = session.get('role_name') == 'Administrator'
     cursor.close()
 
-    return render_template('profile.html', user=user, faculties=faculties, courses=courses, role_name=role_name)
+    return render_template(
+        'settings.html', user=user, faculties=faculties,
+        courses=courses, role_name=role_name, is_admin=is_admin
+    )
 
 
 @app.route('/dashboard')
@@ -430,26 +465,25 @@ def dashboard():
     cursor = db.cursor()
     user_id = session['user_id']
 
-    cursor.execute("SELECT COUNT(*) FROM lost_items WHERE reporter_id = %s", (user_id,))
-    total_lost = cursor.fetchone()[0]
-
-    cursor.execute("SELECT COUNT(*) FROM found_items WHERE finder_id = %s", (user_id,))
-    total_found = cursor.fetchone()[0]
-
-    cursor.execute("SELECT COUNT(*) FROM matches WHERE status = 'pending'")
-    pending_matches = cursor.fetchone()[0]
-
-    cursor.execute("SELECT COUNT(*) FROM matches WHERE status = 'approved'")
-    approved_matches = cursor.fetchone()[0]
-
-    cursor.execute("SELECT COUNT(*) FROM recoveries WHERE status = 'completed'")
-    recovered = cursor.fetchone()[0]
-
     cursor.execute(
-        "SELECT COUNT(*) FROM lost_items WHERE reporter_id = %s AND status = 'reported'",
-        (user_id,)
+        "SELECT "
+        "(SELECT COUNT(*) FROM lost_items WHERE reporter_id = %s) AS total_lost, "
+        "(SELECT COUNT(*) FROM found_items WHERE finder_id = %s) AS total_found, "
+        "(SELECT COUNT(*) FROM lost_items WHERE reporter_id = %s AND status = 'reported') AS pending_reports, "
+        "(SELECT COUNT(*) FROM matches m JOIN lost_items li ON m.lost_item_id = li.id "
+        "   JOIN found_items fi ON m.found_item_id = fi.id "
+        "   WHERE m.status = 'pending' AND (li.reporter_id = %s OR fi.finder_id = %s)) AS pending_matches, "
+        "(SELECT COUNT(*) FROM matches m JOIN lost_items li ON m.lost_item_id = li.id "
+        "   JOIN found_items fi ON m.found_item_id = fi.id "
+        "   WHERE m.status = 'approved' AND (li.reporter_id = %s OR fi.finder_id = %s)) AS approved_matches, "
+        "(SELECT COUNT(*) FROM recoveries r JOIN matches m ON r.match_id = m.id "
+        "   JOIN lost_items li ON m.lost_item_id = li.id "
+        "   JOIN found_items fi ON m.found_item_id = fi.id "
+        "   WHERE r.status = 'completed' AND (li.reporter_id = %s OR fi.finder_id = %s)) AS recovered",
+        (user_id, user_id, user_id, user_id, user_id, user_id, user_id, user_id, user_id)
     )
-    pending_reports = cursor.fetchone()[0]
+    row = cursor.fetchone()
+    total_lost, total_found, pending_reports, pending_matches, approved_matches, recovered = row
 
     cursor.execute(
         "SELECT * FROM lost_items WHERE reporter_id = %s ORDER BY created_at DESC LIMIT 5",
@@ -464,7 +498,12 @@ def dashboard():
     recent_found = cursor.fetchall()
 
     cursor.execute(
-        "SELECT * FROM matches m JOIN lost_items li ON m.lost_item_id = li.id JOIN found_items fi ON m.found_item_id = fi.id WHERE li.reporter_id = %s OR fi.finder_id = %s ORDER BY m.created_at DESC LIMIT 5",
+        "SELECT m.*, li.reference as lost_ref, li.item_name as lost_name, "
+        "fi.reference as found_ref, fi.item_name as found_name "
+        "FROM matches m JOIN lost_items li ON m.lost_item_id = li.id "
+        "JOIN found_items fi ON m.found_item_id = fi.id "
+        "WHERE li.reporter_id = %s OR fi.finder_id = %s "
+        "ORDER BY m.created_at DESC LIMIT 5",
         (user_id, user_id)
     )
     recent_matches = cursor.fetchall()
@@ -483,6 +522,7 @@ def dashboard():
 
     cursor.close()
 
+    session['_unread_count'] = unread_count
 
     stats = {
         'total_lost': total_lost,
@@ -515,6 +555,7 @@ def report_lost():
         brand = request.form.get('brand', '').strip()
         model = request.form.get('model', '').strip()
         color = request.form.get('color', '').strip()
+        shape = request.form.get('shape', '').strip()
         serial_number = request.form.get('serial_number', '').strip()
         unique_marks = request.form.get('unique_marks', '').strip()
         description = request.form.get('description', '').strip()
@@ -534,7 +575,7 @@ def report_lost():
             cursor.execute('SELECT id, name FROM locations WHERE is_active = TRUE ORDER BY name')
             locations = cursor.fetchall()
             cursor.close()
-            
+
             return render_template('report_lost.html', categories=categories, locations=locations)
 
         image_path = None
@@ -553,24 +594,23 @@ def report_lost():
         db = get_db()
         cursor = db.cursor()
         cursor.execute(
-            """INSERT INTO lost_items 
-            (reference, reporter_id, item_name, category_id, brand, model, color, serial_number, 
-             unique_marks, description, approximate_value, date_lost, time_lost, location_id, 
-             location_detail, additional_details, image_path, status) 
-            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, 'reported')""",
-             (reference, session['user_id'], item_name, category_id or None, brand, model, color,
-              serial_number or None, unique_marks or None, description or None,
-              approx_value, date_lost, time_lost or None,
-             location_id or None, location_detail or None, additional_details or None, image_path)
+            """INSERT INTO lost_items
+            (reference, reporter_id, item_name, category_id, brand, model, color, shape,
+             serial_number, unique_marks, description, approximate_value, date_lost, time_lost, location_id,
+             location_detail, additional_details, image_path, shape_data, status)
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, 'reported')""",
+            (reference, session['user_id'], item_name, category_id or None, brand, model, color,
+             shape or None, serial_number or None, unique_marks or None, description or None,
+             approx_value, date_lost, time_lost or None,
+             location_id or None, location_detail or None, additional_details or None, image_path, None)
         )
         db.commit()
         item_id = cursor.lastrowid
         log_activity(session['user_id'], 'report_lost', f'Reported lost item: {reference}')
         cursor.close()
-        
 
-        from ai.matcher import find_potential_matches
-        find_potential_matches('lost', item_id, db)
+
+        threading.Thread(target=_run_matcher_async, args=('lost', item_id), daemon=True).start()
 
         flash('Lost item reported successfully!', 'success')
         return redirect(url_for('my_reports'))
@@ -597,6 +637,10 @@ def report_found():
         brand = request.form.get('brand', '').strip()
         model = request.form.get('model', '').strip()
         color = request.form.get('color', '').strip()
+        shape = request.form.get('shape', '').strip()
+        serial_number = request.form.get('serial_number', '').strip()
+        unique_marks = request.form.get('unique_marks', '').strip()
+        approximate_value = request.form.get('approximate_value')
         description = request.form.get('description', '').strip()
         date_found = request.form.get('date_found')
         time_found = request.form.get('time_found')
@@ -614,7 +658,7 @@ def report_found():
             cursor.execute('SELECT id, name FROM locations WHERE is_active = TRUE ORDER BY name')
             locations = cursor.fetchall()
             cursor.close()
-            
+
             return render_template('report_found.html', categories=categories, locations=locations)
 
         image_path = None
@@ -625,25 +669,31 @@ def report_found():
 
         reference = generate_reference('FM', 'found')
 
+        try:
+            approx_value = float(approximate_value) if approximate_value else None
+        except (ValueError, TypeError):
+            approx_value = None
+
         db = get_db()
         cursor = db.cursor()
         cursor.execute(
-            """INSERT INTO found_items 
-            (reference, finder_id, item_name, category_id, brand, model, color, description, 
-             date_found, time_found, location_id, location_detail, current_location, additional_details, image_path, status) 
-            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, 'reported')""",
+            """INSERT INTO found_items
+            (reference, finder_id, item_name, category_id, brand, model, color, shape,
+             serial_number, unique_marks, approximate_value, description,
+             date_found, time_found, location_id, location_detail, current_location, additional_details, image_path, shape_data, status)
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, 'reported')""",
             (reference, session['user_id'], item_name, category_id or None, brand, model, color,
+             shape or None, serial_number or None, unique_marks or None, approx_value,
              description or None, date_found, time_found or None, location_id or None,
-             location_detail or None, current_location or None, additional_details or None, image_path)
+             location_detail or None, current_location or None, additional_details or None, image_path, None)
         )
         db.commit()
         item_id = cursor.lastrowid
         log_activity(session['user_id'], 'report_found', f'Reported found item: {reference}')
         cursor.close()
-        
 
-        from ai.matcher import find_potential_matches
-        find_potential_matches('found', item_id, db)
+
+        threading.Thread(target=_run_matcher_async, args=('found', item_id), daemon=True).start()
 
         flash('Found item reported successfully!', 'success')
         return redirect(url_for('my_reports'))
@@ -669,13 +719,13 @@ def my_reports():
     user_id = session['user_id']
 
     cursor.execute(
-        'SELECT * FROM lost_items WHERE reporter_id = %s ORDER BY created_at DESC',
+        'SELECT li.*, c.name as category_name FROM lost_items li LEFT JOIN categories c ON li.category_id = c.id WHERE li.reporter_id = %s ORDER BY li.created_at DESC LIMIT 50',
         (user_id,)
     )
     lost_reports = cursor.fetchall()
 
     cursor.execute(
-        'SELECT * FROM found_items WHERE finder_id = %s ORDER BY created_at DESC',
+        'SELECT fi.*, c.name as category_name FROM found_items fi LEFT JOIN categories c ON fi.category_id = c.id WHERE fi.finder_id = %s ORDER BY fi.created_at DESC LIMIT 50',
         (user_id,)
     )
     found_reports = cursor.fetchall()
@@ -707,23 +757,29 @@ def search():
     results = []
     if query or category_id or location_id or report_type or status:
         where_clauses = []
-        params = []
+        params_lost = []
+        params_found = []
 
         if query:
-            where_clauses.append('(item_name LIKE %s OR description LIKE %s OR brand LIKE %s OR color LIKE %s)')
-            params.extend([f'%{query}%'] * 4)
+            clause = '(item_name LIKE %s OR description LIKE %s OR brand LIKE %s OR color LIKE %s)'
+            where_clauses.append(clause)
+            params_lost.extend([f'%{query}%'] * 4)
+            params_found.extend([f'%{query}%'] * 4)
 
         if category_id:
             where_clauses.append('category_id = %s')
-            params.append(category_id)
+            params_lost.append(category_id)
+            params_found.append(category_id)
 
         if location_id:
             where_clauses.append('location_id = %s')
-            params.append(location_id)
+            params_lost.append(location_id)
+            params_found.append(location_id)
 
         if status:
             where_clauses.append('status = %s')
-            params.append(status)
+            params_lost.append(status)
+            params_found.append(status)
 
         where_sql = ' AND '.join(where_clauses) if where_clauses else '1=1'
 
@@ -732,29 +788,19 @@ def search():
             cursor.execute(
                 f"""SELECT 'lost' as type, id as item_id, reference, item_name, category_id, brand, 
                 color, description, date_lost as date, location_id, location_detail, status, image_path 
-                FROM lost_items WHERE {where_sql} AND status IN ('reported','under_review','potential_match','match_pending_approval','match_approved')
-                ORDER BY created_at DESC""",
-                params
+                FROM lost_items WHERE {where_sql}
+                ORDER BY created_at DESC LIMIT 100""",
+                params_lost
             )
             results.extend(cursor.fetchall())
 
         if report_type in ('', 'found'):
-            params2 = []
-            if query:
-                params2.extend([f'%{query}%'] * 4)
-            if category_id:
-                params2.append(category_id)
-            if location_id:
-                params2.append(location_id)
-            if status:
-                params2.append(status)
-
             cursor.execute(
                 f"""SELECT 'found' as type, id as item_id, reference, item_name, category_id, brand, 
                 color, description, date_found as date, location_id, location_detail, status, image_path 
-                FROM found_items WHERE {where_sql} AND status IN ('reported','under_review','potential_match','match_pending_approval','match_approved')
-                ORDER BY created_at DESC""",
-                params2
+                FROM found_items WHERE {where_sql}
+                ORDER BY created_at DESC LIMIT 100""",
+                params_found
             )
             results.extend(cursor.fetchall())
 
@@ -830,8 +876,8 @@ def matches():
 
     cursor.execute(
         """SELECT m.*, 
-        li.reference as lost_ref, li.item_name as lost_name, li.color as lost_color,
-        fi.reference as found_ref, fi.item_name as found_name, fi.color as found_color,
+        li.reference as lost_ref, li.item_name as lost_name, li.color as lost_color, li.shape as lost_shape,
+        fi.reference as found_ref, fi.item_name as found_name, fi.color as found_color, fi.shape as found_shape,
         u1.full_name as lost_reporter, u2.full_name as found_reporter
         FROM matches m 
         JOIN lost_items li ON m.lost_item_id = li.id 
@@ -839,7 +885,7 @@ def matches():
         LEFT JOIN users u1 ON li.reporter_id = u1.id 
         LEFT JOIN users u2 ON fi.finder_id = u2.id 
         WHERE li.reporter_id = %s OR fi.finder_id = %s 
-        ORDER BY m.created_at DESC""",
+        ORDER BY m.created_at DESC LIMIT 100""",
         (user_id, user_id)
     )
     user_matches = cursor.fetchall()
@@ -857,8 +903,8 @@ def match_detail(match_id):
 
     cursor.execute('''
         SELECT m.*, 
-        li.reference as lost_ref, li.item_name as lost_name, li.description as lost_desc, li.color as lost_color, li.brand as lost_brand, li.image_path as lost_image, li.location_detail as lost_loc,
-        fi.reference as found_ref, fi.item_name as found_name, fi.description as found_desc, fi.color as found_color, fi.brand as found_brand, fi.image_path as found_image, fi.location_detail as found_loc,
+        li.reference as lost_ref, li.item_name as lost_name, li.description as lost_desc, li.color as lost_color, li.shape as lost_shape, li.serial_number as lost_serial, li.unique_marks as lost_marks, li.approximate_value as lost_value, li.brand as lost_brand, li.image_path as lost_image, li.location_detail as lost_loc,
+        fi.reference as found_ref, fi.item_name as found_name, fi.description as found_desc, fi.color as found_color, fi.shape as found_shape, fi.serial_number as found_serial, fi.unique_marks as found_marks, fi.approximate_value as found_value, fi.brand as found_brand, fi.image_path as found_image, fi.location_detail as found_loc,
         u1.full_name as lost_reporter, u2.full_name as found_reporter
         FROM matches m 
         JOIN lost_items li ON m.lost_item_id = li.id 
@@ -941,11 +987,8 @@ def admin_dashboard():
     cursor.execute("SELECT * FROM found_items ORDER BY created_at DESC LIMIT 5")
     recent_found = cursor.fetchall()
 
-    cursor.execute("SELECT * FROM matches WHERE status = 'pending' ORDER BY created_at DESC LIMIT 5")
+    cursor.execute("SELECT m.*, li.reference as lost_ref, fi.reference as found_ref FROM matches m JOIN lost_items li ON m.lost_item_id = li.id JOIN found_items fi ON m.found_item_id = fi.id WHERE m.status = 'pending' ORDER BY m.created_at DESC LIMIT 5")
     pending_match_list = cursor.fetchall()
-
-    cursor.execute("SELECT * FROM recoveries WHERE status = 'pending' ORDER BY created_at DESC LIMIT 5")
-    pending_recoveries = cursor.fetchall()
 
     cursor.execute("SELECT action, description, created_at FROM activity_logs ORDER BY created_at DESC LIMIT 10")
     recent_logs = cursor.fetchall()
@@ -968,7 +1011,6 @@ def admin_dashboard():
         recent_lost=recent_lost,
         recent_found=recent_found,
         pending_match_list=pending_match_list,
-        pending_recoveries=pending_recoveries,
         recent_logs=recent_logs
     )
 
@@ -977,27 +1019,33 @@ def admin_dashboard():
 @login_required
 @admin_required
 def admin_users():
+    page = request.args.get('page', 1, type=int)
     db = get_db()
     cursor = db.cursor()
-    cursor.execute('''
-        SELECT u.id, u.full_name, u.email, u.phone, u.student_staff_id, u.is_active, u.created_at, 
+    base = '''SELECT u.id, u.full_name, u.email, u.phone, u.student_staff_id, u.is_active, u.created_at, 
                r.name as role_name, f.name as faculty_name, c.name as course_name 
         FROM users u 
         JOIN roles r ON u.role_id = r.id 
         LEFT JOIN faculties f ON u.faculty_id = f.id 
-        LEFT JOIN courses c ON u.course_id = c.id 
-        ORDER BY u.created_at DESC
-    ''')
-    users = cursor.fetchall()
+        LEFT JOIN courses c ON u.course_id = c.id'''
+    users, page, total_pages, total = paginated_query(
+        cursor,
+        base + ' ORDER BY u.created_at DESC',
+        'SELECT COUNT(*) FROM users',
+        [], page
+    )
     cursor.close()
 
-    return render_template('admin/users.html', users=users)
+    return render_template('admin/users.html', users=users, page=page, total_pages=total_pages, total=total)
 
 
 @app.route('/admin/users/<int:user_id>/toggle', methods=['POST'])
 @login_required
 @admin_required
 def admin_toggle_user(user_id):
+    if user_id == session['user_id']:
+        flash('You cannot deactivate your own account.', 'danger')
+        return redirect(url_for('admin_users'))
     db = get_db()
     cursor = db.cursor()
     cursor.execute('SELECT is_active FROM users WHERE id = %s', (user_id,))
@@ -1011,6 +1059,62 @@ def admin_toggle_user(user_id):
         flash(f'User {status} successfully.', 'success')
     cursor.close()
 
+    return redirect(url_for('admin_users'))
+
+
+@app.route('/admin/users/<int:user_id>/delete', methods=['POST'])
+@login_required
+@admin_required
+def admin_delete_user(user_id):
+    if user_id == session['user_id']:
+        flash('You cannot delete your own account.', 'danger')
+        return redirect(url_for('admin_users'))
+
+    db = get_db()
+    cursor = db.cursor()
+
+    cursor.execute('SELECT full_name FROM users WHERE id = %s', (user_id,))
+    user = cursor.fetchone()
+    if not user:
+        cursor.close()
+        flash('User not found.', 'danger')
+        return redirect(url_for('admin_users'))
+
+    user_name = user[0]
+
+    cursor.execute('DELETE FROM notifications WHERE user_id = %s', (user_id,))
+    cursor.execute('DELETE FROM activity_logs WHERE user_id = %s', (user_id,))
+    cursor.execute('DELETE FROM verification_requests WHERE requester_id = %s OR claimer_id = %s', (user_id, user_id))
+    cursor.execute('DELETE FROM recoveries WHERE recovered_by_id = %s', (user_id,))
+    cursor.execute('UPDATE matches SET reviewed_by = NULL WHERE reviewed_by = %s', (user_id,))
+    cursor.execute('UPDATE lost_items SET verified_by = NULL WHERE verified_by = %s', (user_id,))
+    cursor.execute('UPDATE found_items SET verified_by = NULL WHERE verified_by = %s', (user_id,))
+
+    cursor.execute('SELECT id FROM lost_items WHERE reporter_id = %s', (user_id,))
+    lost_ids = [r[0] for r in cursor.fetchall()]
+    cursor.execute('SELECT id FROM found_items WHERE finder_id = %s', (user_id,))
+    found_ids = [r[0] for r in cursor.fetchall()]
+
+    for lid in lost_ids:
+        cursor.execute('DELETE FROM recoveries WHERE match_id IN (SELECT id FROM matches WHERE lost_item_id = %s)', (lid,))
+    for fid in found_ids:
+        cursor.execute('DELETE FROM recoveries WHERE match_id IN (SELECT id FROM matches WHERE found_item_id = %s)', (fid,))
+
+    for lid in lost_ids:
+        cursor.execute('DELETE FROM matches WHERE lost_item_id = %s', (lid,))
+    for fid in found_ids:
+        cursor.execute('DELETE FROM matches WHERE found_item_id = %s', (fid,))
+
+    cursor.execute('DELETE FROM item_images WHERE item_id IN (SELECT id FROM lost_items WHERE reporter_id = %s)', (user_id,))
+    cursor.execute('DELETE FROM lost_items WHERE reporter_id = %s', (user_id,))
+    cursor.execute('DELETE FROM found_items WHERE finder_id = %s', (user_id,))
+    cursor.execute('DELETE FROM users WHERE id = %s', (user_id,))
+
+    db.commit()
+    cursor.close()
+
+    log_activity(session['user_id'], 'delete_user', f'Permanently deleted user: {user_name} (ID: {user_id})')
+    flash(f'User "{user_name}" and all their data have been permanently deleted.', 'success')
     return redirect(url_for('admin_users'))
 
 
@@ -1206,81 +1310,84 @@ def admin_toggle_location(loc_id):
 @login_required
 @admin_required
 def admin_lost_items():
+    page = request.args.get('page', 1, type=int)
     db = get_db()
     cursor = db.cursor()
-    cursor.execute('''
-        SELECT li.*, u.full_name as reporter_name, c.name as category_name, l.name as location_name 
+    base = '''SELECT li.*, u.full_name as reporter_name, c.name as category_name, l.name as location_name 
         FROM lost_items li 
         JOIN users u ON li.reporter_id = u.id 
         LEFT JOIN categories c ON li.category_id = c.id 
-        LEFT JOIN locations l ON li.location_id = l.id 
-        ORDER BY li.created_at DESC
-    ''')
-    items = cursor.fetchall()
+        LEFT JOIN locations l ON li.location_id = l.id'''
+    items, page, total_pages, total = paginated_query(
+        cursor,
+        base + ' ORDER BY li.created_at DESC',
+        'SELECT COUNT(*) FROM lost_items',
+        [], page
+    )
     cursor.close()
 
-    return render_template('admin/lost_items.html', items=items)
+    return render_template('admin/lost_items.html', items=items, page=page, total_pages=total_pages, total=total)
 
 
 @app.route('/admin/found-items')
 @login_required
 @admin_required
 def admin_found_items():
+    page = request.args.get('page', 1, type=int)
     db = get_db()
     cursor = db.cursor()
-    cursor.execute('''
-        SELECT fi.*, u.full_name as finder_name, c.name as category_name, l.name as location_name 
+    base = '''SELECT fi.*, u.full_name as finder_name, c.name as category_name, l.name as location_name 
         FROM found_items fi 
         JOIN users u ON fi.finder_id = u.id 
         LEFT JOIN categories c ON fi.category_id = c.id 
-        LEFT JOIN locations l ON fi.location_id = l.id 
-        ORDER BY fi.created_at DESC
-    ''')
-    items = cursor.fetchall()
+        LEFT JOIN locations l ON fi.location_id = l.id'''
+    items, page, total_pages, total = paginated_query(
+        cursor,
+        base + ' ORDER BY fi.created_at DESC',
+        'SELECT COUNT(*) FROM found_items',
+        [], page
+    )
     cursor.close()
 
-    return render_template('admin/found_items.html', items=items)
+    return render_template('admin/found_items.html', items=items, page=page, total_pages=total_pages, total=total)
 
 
 @app.route('/admin/matches')
 @login_required
 @admin_required
 def admin_matches():
+    page = request.args.get('page', 1, type=int)
     db = get_db()
     cursor = db.cursor()
     status_filter = request.args.get('status', 'pending')
     all_statuses = ['pending', 'approved', 'rejected', 'uncertain']
+    base = '''SELECT m.*, 
+            li.reference as lost_ref, li.item_name as lost_name, li.color as lost_color, li.shape as lost_shape, li.serial_number as lost_serial, li.unique_marks as lost_marks, li.approximate_value as lost_value, li.image_path as lost_image,
+            fi.reference as found_ref, fi.item_name as found_name, fi.color as found_color, fi.shape as found_shape, fi.serial_number as found_serial, fi.unique_marks as found_marks, fi.approximate_value as found_value, fi.image_path as found_image,
+            u1.full_name as lost_reporter, u2.full_name as found_reporter
+            FROM matches m 
+            JOIN lost_items li ON m.lost_item_id = li.id 
+            JOIN found_items fi ON m.found_item_id = fi.id 
+            LEFT JOIN users u1 ON li.reporter_id = u1.id 
+            LEFT JOIN users u2 ON fi.finder_id = u2.id'''
     if status_filter in all_statuses:
-        cursor.execute('''
-            SELECT m.*, 
-            li.reference as lost_ref, li.item_name as lost_name, li.color as lost_color, li.image_path as lost_image,
-            fi.reference as found_ref, fi.item_name as found_name, fi.color as found_color, fi.image_path as found_image,
-            u1.full_name as lost_reporter, u2.full_name as found_reporter
-            FROM matches m 
-            JOIN lost_items li ON m.lost_item_id = li.id 
-            JOIN found_items fi ON m.found_item_id = fi.id 
-            LEFT JOIN users u1 ON li.reporter_id = u1.id 
-            LEFT JOIN users u2 ON fi.finder_id = u2.id 
-            WHERE m.status = %s
-            ORDER BY m.created_at DESC
-        ''', (status_filter,))
+        items, page, total_pages, total = paginated_query(
+            cursor,
+            base + ' WHERE m.status = %s ORDER BY m.created_at DESC',
+            'SELECT COUNT(*) FROM matches WHERE status = %s',
+            [status_filter], page
+        )
     else:
-        cursor.execute('''
-            SELECT m.*, 
-            li.reference as lost_ref, li.item_name as lost_name, li.color as lost_color, li.image_path as lost_image,
-            fi.reference as found_ref, fi.item_name as found_name, fi.color as found_color, fi.image_path as found_image,
-            u1.full_name as lost_reporter, u2.full_name as found_reporter
-            FROM matches m 
-            JOIN lost_items li ON m.lost_item_id = li.id 
-            JOIN found_items fi ON m.found_item_id = fi.id 
-            LEFT JOIN users u1 ON li.reporter_id = u1.id 
-            LEFT JOIN users u2 ON fi.finder_id = u2.id 
-            ORDER BY m.created_at DESC
-        ''')
-    matches = cursor.fetchall()
+        items, page, total_pages, total = paginated_query(
+            cursor,
+            base + ' ORDER BY m.created_at DESC',
+            'SELECT COUNT(*) FROM matches',
+            [], page
+        )
+        status_filter = 'all'
     cursor.close()
 
-    return render_template('admin/ai_matches.html', matches=matches, status_filter=status_filter)
+    return render_template('admin/ai_matches.html', matches=items, status_filter=status_filter, page=page, total_pages=total_pages, total=total)
 
 
 @app.route('/admin/match/<int:match_id>/approve', methods=['POST'])
@@ -1489,10 +1596,13 @@ def admin_reports():
     total_recovered = cursor.fetchone()[0]
 
     cursor.execute('''
-        SELECT c.name as category_name, 
-        (SELECT COUNT(*) FROM lost_items WHERE category_id = c.id) as lost_count,
-        (SELECT COUNT(*) FROM found_items WHERE category_id = c.id) as found_count
-        FROM categories c ORDER BY c.name
+        SELECT c.name as category_name,
+               COALESCE(l.cnt, 0) as lost_count,
+               COALESCE(f.cnt, 0) as found_count
+        FROM categories c
+        LEFT JOIN (SELECT category_id, COUNT(*) as cnt FROM lost_items GROUP BY category_id) l ON c.id = l.category_id
+        LEFT JOIN (SELECT category_id, COUNT(*) as cnt FROM found_items GROUP BY category_id) f ON c.id = f.category_id
+        ORDER BY c.name
     ''')
     by_category = cursor.fetchall()
 
@@ -1514,18 +1624,28 @@ def admin_reports():
 @login_required
 @admin_required
 def admin_activity_logs():
+    page = request.args.get('page', 1, type=int)
     db = get_db()
     cursor = db.cursor()
-    cursor.execute('''
-        SELECT al.*, u.full_name as user_name 
+    base = '''SELECT al.*, u.full_name as user_name 
         FROM activity_logs al 
-        LEFT JOIN users u ON al.user_id = u.id 
-        ORDER BY al.created_at DESC LIMIT 50
-    ''')
-    logs = cursor.fetchall()
+        LEFT JOIN users u ON al.user_id = u.id'''
+    logs, page, total_pages, total = paginated_query(
+        cursor,
+        base + ' ORDER BY al.created_at DESC',
+        'SELECT COUNT(*) FROM activity_logs',
+        [], page, per_page=50
+    )
     cursor.close()
 
-    return render_template('admin/activity_logs.html', logs=logs)
+    return render_template('admin/activity_logs.html', logs=logs, page=page, total_pages=total_pages, total=total)
+
+
+ITEM_STATUSES = {
+    'reported', 'under_review', 'potential_match', 'match_pending_approval',
+    'match_approved', 'match_rejected', 'owner_verification_pending',
+    'owner_verified', 'recovered', 'closed', 'archived'
+}
 
 
 @app.route('/admin/lost-items/<int:item_id>/edit-status', methods=['POST'])
@@ -1535,10 +1655,12 @@ def admin_edit_lost_status(item_id):
     db = get_db()
     cursor = db.cursor()
     new_status = request.form.get('status')
-    if new_status:
+    if new_status in ITEM_STATUSES:
         cursor.execute('UPDATE lost_items SET status = %s WHERE id = %s', (new_status, item_id))
         db.commit()
         log_activity(session['user_id'], 'update_lost_status', f'Updated lost item {item_id} status to {new_status}')
+    else:
+        flash('Invalid status value.', 'danger')
     cursor.close()
 
     return redirect(url_for('admin_lost_items'))
@@ -1551,10 +1673,12 @@ def admin_edit_found_status(item_id):
     db = get_db()
     cursor = db.cursor()
     new_status = request.form.get('status')
-    if new_status:
+    if new_status in ITEM_STATUSES:
         cursor.execute('UPDATE found_items SET status = %s WHERE id = %s', (new_status, item_id))
         db.commit()
         log_activity(session['user_id'], 'update_found_status', f'Updated found item {item_id} status to {new_status}')
+    else:
+        flash('Invalid status value.', 'danger')
     cursor.close()
 
     return redirect(url_for('admin_found_items'))
@@ -1564,7 +1688,7 @@ def admin_edit_found_status(item_id):
 @login_required
 @admin_required
 def admin_settings():
-    return render_template('admin/settings.html')
+    return redirect(url_for('settings'))
 
 
 @app.route('/admin/reset', methods=['POST'])
@@ -1577,35 +1701,31 @@ def admin_reset_data():
     confirm = request.form.get('confirm', '').strip()
     if confirm != 'RESET':
         flash('Type RESET to confirm.', 'danger')
-        return redirect(url_for('admin_settings'))
+        return redirect(url_for('settings'))
 
     reset_type = request.form.get('reset_type', 'activity')
 
+    if reset_type not in ('activity', 'all'):
+        flash('Invalid reset type.', 'danger')
+        return redirect(url_for('settings'))
+
+    tables = [
+        'activity_logs', 'recoveries', 'verification_requests',
+        'notifications', 'matches', 'item_images',
+        'found_items', 'lost_items'
+    ]
+    for t in tables:
+        cursor.execute(f'DELETE FROM {t}')
     if reset_type == 'all':
-        tables = [
-            'activity_logs', 'recoveries', 'verification_requests',
-            'notifications', 'matches', 'item_images',
-            'found_items', 'lost_items'
-        ]
-        for t in tables:
-            cursor.execute(f'DELETE FROM {t}')
         cursor.execute('DELETE FROM users WHERE role_id != 3')
         cursor.execute('UPDATE users SET profile_image = NULL WHERE role_id != 3')
-    else:
-        tables = [
-            'activity_logs', 'recoveries', 'verification_requests',
-            'notifications', 'matches', 'item_images',
-            'found_items', 'lost_items'
-        ]
-        for t in tables:
-            cursor.execute(f'DELETE FROM {t}')
 
     db.commit()
     cursor.close()
 
     log_activity(session['user_id'], 'system_reset', f'Reset all {reset_type} data')
     flash(f'All {reset_type} data has been reset.', 'success')
-    return redirect(url_for('admin_settings'))
+    return redirect(url_for('settings'))
 
 
 # ==================== IMAGE ACCESS ====================
@@ -1624,23 +1744,11 @@ def request_entity_too_large(error):
 @app.context_processor
 def inject_now():
     now = datetime.now()
-    unread_count = 0
-    if 'user_id' in session:
-        try:
-            db = get_db()
-            cursor = db.cursor()
-            cursor.execute(
-                'SELECT COUNT(*) FROM notifications WHERE user_id = %s AND is_read = FALSE',
-                (session['user_id'],)
-            )
-            unread_count = cursor.fetchone()[0]
-            cursor.close()
-        except Exception:
-            unread_count = 0
+    unread_count = session.get('_unread_count', 0)
     return {'now': now, 'unread_count': unread_count}
 
 
 # ==================== RUN ====================
 
 if __name__ == '__main__':
-    app.run(debug=True, port=5000)
+    app.run(host='0.0.0.0', port=5000)

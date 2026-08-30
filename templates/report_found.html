@@ -53,20 +53,40 @@
                     <input type="text" id="brand" name="brand" placeholder="e.g. Samsung">
                 </div>
             </div>
-            <div class="form-grid-2">
-                <div class="form-group">
-                    <label for="model">Model</label>
-                    <input type="text" id="model" name="model" placeholder="e.g. Galaxy S23">
-                </div>
-                <div class="form-group">
-                    <label for="color">Color</label>
-                    <input type="text" id="color" name="color" placeholder="e.g. Black">
-                </div>
-            </div>
-            <div class="form-group">
-                <label for="description">Description <span class="required">*</span></label>
-                <textarea id="description" name="description" rows="4" required placeholder="Describe the item in detail — color, size, condition, any marks"></textarea>
-            </div>
+<div class="form-grid-2">
+                 <div class="form-group">
+                     <label for="model">Model</label>
+                     <input type="text" id="model" name="model" placeholder="e.g. Galaxy S23">
+                 </div>
+                 <div class="form-group">
+                     <label for="color">Color</label>
+                     <input type="text" id="color" name="color" placeholder="e.g. Black">
+                 </div>
+             </div>
+             <div class="form-grid-2">
+                 <div class="form-group">
+                     <label for="shape">Shape</label>
+                     <input type="text" id="shape" name="shape" placeholder="e.g. Rectangular, Round, Cylindrical">
+                 </div>
+                 <div class="form-group">
+                     <label for="serial_number">Serial Number</label>
+                     <input type="text" id="serial_number" name="serial_number" placeholder="If applicable">
+                 </div>
+             </div>
+             <div class="form-grid-2">
+                 <div class="form-group">
+                     <label for="approximate_value">Approximate Value (UGX)</label>
+                     <input type="number" id="approximate_value" name="approximate_value" placeholder="Optional">
+                 </div>
+                 <div class="form-group">
+                     <label for="unique_marks">Unique Identifying Marks</label>
+                     <textarea id="unique_marks" name="unique_marks" rows="2" placeholder="Scratches, stickers, engravings, etc."></textarea>
+                 </div>
+             </div>
+             <div class="form-group">
+                 <label for="description">Description <span class="required">*</span></label>
+                 <textarea id="description" name="description" rows="4" required placeholder="Describe the item in detail — color, size, condition, any marks"></textarea>
+             </div>
         </div>
 
         <div class="form-section">
@@ -110,7 +130,7 @@
             <h3 class="form-section-title"><i class="fas fa-image"></i> Image (Optional)</h3>
             <div class="form-group">
                 <label for="image" class="file-input-label">
-                    <i class="fas fa-cloud-upload-alt"></i> Choose an image or drag it here
+                    <i class="fas fa-cloud-arrow-up"></i> Choose an image or drag it here
                 </label>
                 <input type="file" id="image" name="image" accept=".jpg,.jpeg,.png,.webp" onchange="previewImage(event)">
                 <small class="file-input-hint">Accepted: JPG, PNG, WEBP. Max: 16MB</small>

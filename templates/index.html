@@ -1,13 +1,19 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>FindMe - Lost &amp; Found System | Cavendish University Uganda</title>
+    <link rel="icon" type="image/svg+xml" href="{{ url_for('static', filename='img/favicon.svg') }}">
+    <link rel="icon" type="image/png" sizes="32x32" href="{{ url_for('static', filename='img/favicon-32.png') }}">
+    <link rel="apple-touch-icon" href="{{ url_for('static', filename='img/apple-touch-icon.png') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+    <link rel="preconnect" href="https://cdnjs.cloudflare.com" crossorigin>
     <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" media="print" onload="this.media='all'">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" media="print" onload="this.media='all'">
+    <noscript><link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css"><link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet"></noscript>
     <script>
         (function(){
             var t=localStorage.getItem('findme-theme');
@@ -21,7 +27,7 @@
     <nav class="navbar" id="publicNavbar">
         <div class="nav-container">
             <a href="{{ url_for('index') }}" class="nav-brand">
-                <i class="fas fa-search"></i> FindMe
+                <i class="fas fa-magnifying-glass"></i> FindMe
             </a>
             <button class="nav-toggle" id="navToggle"><i class="fas fa-bars"></i></button>
             <ul class="nav-links" id="navLinks">
@@ -46,13 +52,13 @@
             </p>
             <div class="hero-actions">
                 <a href="{{ url_for('report_lost') }}" class="btn btn-danger btn-lg">
-                    <i class="fas fa-exclamation-triangle"></i> Report Lost
+                    <i class="fas fa-triangle-exclamation"></i> Report Lost
                 </a>
                 <a href="{{ url_for('report_found') }}" class="btn btn-success btn-lg">
                     <i class="fas fa-hand-holding"></i> Report Found
                 </a>
                 <a href="{{ url_for('search') }}" class="btn btn-light btn-lg">
-                    <i class="fas fa-search"></i> Search Items
+                    <i class="fas fa-magnifying-glass"></i> Search Items
                 </a>
             </div>
             <div class="hero-stats">
@@ -80,7 +86,7 @@
             <div class="workflow-steps">
                 <div class="step-card">
                     <div class="step-number">1</div>
-                    <div class="step-icon"><i class="fas fa-file-alt"></i></div>
+                    <div class="step-icon"><i class="fas fa-file-lines"></i></div>
                     <h3>Report</h3>
                     <p>Fill out a quick form with item details, description, and location. Takes less than a minute.</p>
                 </div>
@@ -138,7 +144,7 @@
                 <div class="feature-card">
                     <div class="feature-row">
                         <div class="feature-icon" style="background: var(--gradient-danger);">
-                            <i class="fas fa-map-marker-alt"></i>
+                            <i class="fas fa-location-dot"></i>
                         </div>
                         <h3>Location Tracking</h3>
                     </div>

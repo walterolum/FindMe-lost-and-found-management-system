@@ -11,7 +11,7 @@
         <a href="{{ url_for('admin_matches', status='pending') }}" class="btn btn-sm {% if status_filter == 'pending' %}btn-accent{% else %}btn-outline{% endif %}">Pending</a>
         <a href="{{ url_for('admin_matches', status='approved') }}" class="btn btn-sm {% if status_filter == 'approved' %}btn-success{% else %}btn-outline{% endif %}">Approved</a>
         <a href="{{ url_for('admin_matches', status='rejected') }}" class="btn btn-sm {% if status_filter == 'rejected' %}btn-danger{% else %}btn-outline{% endif %}">Rejected</a>
-        <a href="{{ url_for('admin_matches', status='all') }}" class="btn btn-sm {% if status_filter not in ('pending','approved','rejected') %}btn-secondary{% else %}btn-outline{% endif %}">All</a>
+        <a href="{{ url_for('admin_matches', status='all') }}" class="btn btn-sm {% if status_filter == 'all' %}btn-secondary{% else %}btn-outline{% endif %}">All</a>
     </div>
 
     {% if matches %}
@@ -27,10 +27,10 @@
 
         <div class="match-compare">
             <div class="match-compare-item">
-                <div class="match-compare-label lost-label"><i class="fas fa-exclamation-triangle"></i> Lost Item</div>
-                {% if m[15] %}
+                <div class="match-compare-label lost-label"><i class="fas fa-triangle-exclamation"></i> Lost Item</div>
+                {% if m[19] %}
                 <div class="match-compare-image">
-                    <img src="{{ url_for('serve_image', filename=m[15]) }}" alt="{{ m[13] }}">
+                    <img src="{{ url_for('serve_image', filename=m[19]) }}" alt="{{ m[13] }}">
                 </div>
                 {% else %}
                 <div class="match-compare-image no-image"><i class="fas fa-image"></i><span>No Image</span></div>
@@ -39,28 +39,30 @@
                     <h4>{{ m[13] }}</h4>
                     <p><strong>Ref:</strong> {{ m[12] }}</p>
                     <p><strong>Color:</strong> {{ m[14] or 'N/A' }}</p>
-                    <p><strong>Reporter:</strong> {{ m[20] or 'N/A' }}</p>
+                    <p><strong>Shape:</strong> {{ m[15] or 'N/A' }}</p>
+                    <p><strong>Reporter:</strong> {{ m[28] or 'N/A' }}</p>
                 </div>
             </div>
 
             <div class="match-compare-arrow">
-                <i class="fas fa-arrows-alt-h"></i>
+                <i class="fas fa-left-right"></i>
             </div>
 
             <div class="match-compare-item">
-                <div class="match-compare-label found-label"><i class="fas fa-search"></i> Found Item</div>
-                {% if m[19] %}
+                <div class="match-compare-label found-label"><i class="fas fa-magnifying-glass"></i> Found Item</div>
+                {% if m[27] %}
                 <div class="match-compare-image">
-                    <img src="{{ url_for('serve_image', filename=m[19]) }}" alt="{{ m[17] }}">
+                    <img src="{{ url_for('serve_image', filename=m[27]) }}" alt="{{ m[21] }}">
                 </div>
                 {% else %}
                 <div class="match-compare-image no-image"><i class="fas fa-image"></i><span>No Image</span></div>
                 {% endif %}
                 <div class="match-compare-details">
-                    <h4>{{ m[17] }}</h4>
-                    <p><strong>Ref:</strong> {{ m[16] }}</p>
-                    <p><strong>Color:</strong> {{ m[18] or 'N/A' }}</p>
-                    <p><strong>Finder:</strong> {{ m[21] or 'N/A' }}</p>
+                    <h4>{{ m[21] }}</h4>
+                    <p><strong>Ref:</strong> {{ m[20] }}</p>
+                    <p><strong>Color:</strong> {{ m[22] or 'N/A' }}</p>
+                    <p><strong>Shape:</strong> {{ m[23] or 'N/A' }}</p>
+                    <p><strong>Finder:</strong> {{ m[29] or 'N/A' }}</p>
                 </div>
             </div>
         </div>
@@ -81,7 +83,7 @@
             </form>
             <form method="POST" action="{{ url_for('admin_reject_match', match_id=m[0]) }}">
                 <button type="submit" class="btn btn-danger" onclick="return confirm('Reject this match?')">
-                    <i class="fas fa-times"></i> Reject
+                    <i class="fas fa-xmark"></i> Reject
                 </button>
             </form>
         </div>
@@ -94,5 +96,6 @@
         <p>No matches to review</p>
     </div>
     {% endif %}
+    {% include '_pagination.html' %}
 </div>
 {% endblock %}

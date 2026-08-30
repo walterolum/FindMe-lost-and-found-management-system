@@ -29,13 +29,24 @@
                     <td>{{ user[3] or 'N/A' }}</td>
                     <td><span class="badge badge-info">{{ user[7] }}</span></td>
                     <td>{{ user[8] or 'N/A' }}</td>
-                    <td><span class="badge badge-{{ 'active' if user[6] else 'inactive' }}">{{ 'Active' if user[6] else 'Inactive' }}</span></td>
+                    <td><span class="badge badge-{{ 'active' if user[5] else 'inactive' }}">{{ 'Active' if user[5] else 'Inactive' }}</span></td>
                     <td>
-                        <form method="POST" action="{{ url_for('admin_toggle_user', user_id=user[0]) }}" style="display:inline;">
-                            <button type="submit" class="btn btn-sm {{ 'btn-warning' if user[6] else 'btn-success' }}">
-                                {{ 'Deactivate' if user[6] else 'Activate' }}
-                            </button>
-                        </form>
+                        <div class="action-btns">
+                            <form method="POST" action="{{ url_for('admin_toggle_user', user_id=user[0]) }}">
+                                <button type="submit" class="btn btn-sm {{ 'btn-warning' if user[5] else 'btn-success' }}">
+                                    {{ 'Deactivate' if user[5] else 'Activate' }}
+                                </button>
+                            </form>
+                            {% if user[7] == 'Administrator' %}
+                            <span class="protected-badge" title="Admin accounts cannot be deleted"><i class="fas fa-shield-halved"></i> Protected</span>
+                            {% else %}
+                            <form method="POST" action="{{ url_for('admin_delete_user', user_id=user[0]) }}" onsubmit="return confirm('Permanently delete user &quot;{{ user[1] }}&quot; and ALL their data? This cannot be undone.');">
+                                <button type="submit" class="btn btn-sm btn-danger">
+                                    <i class="fas fa-trash"></i> Delete
+                                </button>
+                            </form>
+                            {% endif %}
+                        </div>
                     </td>
                 </tr>
                 {% endfor %}
@@ -45,5 +56,6 @@
     {% else %}
     <div class="empty-state"><i class="fas fa-users"></i><p>No users found</p></div>
     {% endif %}
+    {% include '_pagination.html' %}
 </div>
 {% endblock %}

@@ -1,13 +1,19 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{% block title %}FindMe{% endblock %} - Cavendish University Uganda</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+    <link rel="icon" type="image/svg+xml" href="{{ url_for('static', filename='img/favicon.svg') }}">
+    <link rel="icon" type="image/png" sizes="32x32" href="{{ url_for('static', filename='img/favicon-32.png') }}">
+    <link rel="apple-touch-icon" href="{{ url_for('static', filename='img/apple-touch-icon.png') }}">
+    <link rel="preconnect" href="https://cdnjs.cloudflare.com" crossorigin>
     <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" media="print" onload="this.media='all'">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" media="print" onload="this.media='all'">
+    <noscript><link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css"><link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet"></noscript>
     <script>
         (function(){
             var t=localStorage.getItem('findme-theme');
@@ -18,10 +24,10 @@
 </head>
 <body>
     {% if session.user_id %}
-    {# ── Sidebar for authenticated users ── #}
+    {# â”€â”€ Sidebar for authenticated users â”€â”€ #}
     <aside class="sidebar" id="sidebar">
         <a href="{{ url_for('dashboard') }}" class="sidebar-brand">
-            <span class="brand-icon"><i class="fas fa-search"></i></span>
+            <span class="brand-icon"><i class="fas fa-magnifying-glass"></i></span>
             <span class="brand-text">FindMe</span>
         </a>
         <div class="sidebar-user">
@@ -38,21 +44,21 @@
         <nav class="sidebar-nav">
             <div class="nav-section">Main</div>
             <a href="{{ url_for('dashboard') }}" class="{{ 'active' if request.endpoint == 'dashboard' }}">
-                <i class="fas fa-home"></i> <span>Dashboard</span>
+                <i class="fas fa-house"></i> <span>Dashboard</span>
             </a>
             <a href="{{ url_for('report_lost') }}" class="{{ 'active' if request.endpoint == 'report_lost' }}">
-                <i class="fas fa-exclamation-triangle"></i> <span>Report Lost</span>
+                <i class="fas fa-triangle-exclamation"></i> <span>Report Lost</span>
             </a>
             <a href="{{ url_for('report_found') }}" class="{{ 'active' if request.endpoint == 'report_found' }}">
                 <i class="fas fa-hand-holding"></i> <span>Report Found</span>
             </a>
             <a href="{{ url_for('search') }}" class="{{ 'active' if request.endpoint == 'search' }}">
-                <i class="fas fa-search"></i> <span>Search Items</span>
+                <i class="fas fa-magnifying-glass"></i> <span>Search Items</span>
             </a>
 
             <div class="nav-section">Activity</div>
             <a href="{{ url_for('my_reports') }}" class="{{ 'active' if request.endpoint == 'my_reports' }}">
-                <i class="fas fa-file-alt"></i> <span>My Reports</span>
+                <i class="fas fa-file-lines"></i> <span>My Reports</span>
             </a>
             <a href="{{ url_for('matches') }}" class="{{ 'active' if request.endpoint in ('matches', 'match_detail') }}">
                 <i class="fas fa-brain"></i> <span>AI Matches</span>
@@ -66,7 +72,7 @@
                 <i class="fas fa-robot"></i> <span>Match Review</span>
             </a>
             <a href="{{ url_for('admin_lost_items') }}" class="{{ 'active' if request.endpoint == 'admin_lost_items' }}">
-                <i class="fas fa-exclamation-circle"></i> <span>Lost Items</span>
+                <i class="fas fa-circle-exclamation"></i> <span>Lost Items</span>
             </a>
             <a href="{{ url_for('admin_found_items') }}" class="{{ 'active' if request.endpoint == 'admin_found_items' }}">
                 <i class="fas fa-gift"></i> <span>Found Items</span>
@@ -75,16 +81,13 @@
                 <i class="fas fa-users"></i> <span>Users</span>
             </a>
             <a href="{{ url_for('admin_activity_logs') }}" class="{{ 'active' if request.endpoint == 'admin_activity_logs' }}">
-                <i class="fas fa-history"></i> <span>Activity Logs</span>
+                <i class="fas fa-clock-rotate-left"></i> <span>Activity Logs</span>
             </a>
             {% endif %}
         </nav>
         <div class="sidebar-footer">
-            <a href="{{ url_for('profile') }}"><i class="fas fa-user-circle"></i> <span>Profile</span></a>
-            {% if session.get('role_name') == 'Administrator' %}
-            <a href="{{ url_for('admin_settings') }}"><i class="fas fa-cog"></i> <span>Settings</span></a>
-            {% endif %}
-            <a href="{{ url_for('logout') }}"><i class="fas fa-sign-out-alt"></i> <span>Logout</span></a>
+            <a href="{{ url_for('settings') }}"><i class="fas fa-user-cog"></i> <span>Settings</span></a>
+            <a href="{{ url_for('logout') }}"><i class="fas fa-arrow-right-from-bracket"></i> <span>Logout</span></a>
         </div>
     </aside>
     <div class="sidebar-overlay" id="sidebarOverlay"></div>
@@ -95,11 +98,11 @@
     </button>
 
     {% if not session.user_id %}
-    {# ── Top navbar for public pages ── #}
+    {# â”€â”€ Top navbar for public pages â”€â”€ #}
     <nav class="navbar" id="publicNavbar">
         <div class="nav-container">
             <a href="{{ url_for('index') }}" class="nav-brand">
-                <i class="fas fa-search"></i> FindMe
+                <i class="fas fa-magnifying-glass"></i> FindMe
             </a>
             <button class="nav-toggle" id="navToggle"><i class="fas fa-bars"></i></button>
             <ul class="nav-links" id="navLinks">
@@ -112,7 +115,7 @@
         </div>
     </nav>
     {% else %}
-    {# ── Minimal top bar for authenticated users ── #}
+    {# â”€â”€ Minimal top bar for authenticated users â”€â”€ #}
     <nav class="navbar" id="publicNavbar" style="margin-left:var(--sidebar-width);transition:margin-left var(--duration-slow) var(--ease-out);">
         <div class="nav-container">
             <div style="display:flex;align-items:center;gap:var(--space-3);">
@@ -143,7 +146,7 @@
             {% with messages = get_flashed_messages(with_categories=true) %}
                 {% if messages %}
                     {% for category, message in messages %}
-                        <div class="flash-message flash-{{ category }}" style="max-width:1400px;margin:0 auto var(--space-4);">
+                        <div class="flash-message flash-{{ category }}" style="max-width:1560px;margin:0 auto var(--space-3);">
                             <i class="fas fa-{{ 'check-circle' if category == 'success' else 'exclamation-circle' if category == 'danger' else 'exclamation-triangle' if category == 'warning' else 'info-circle' }}"></i>
                             {{ message }}
                             <button class="flash-close" onclick="this.parentElement.remove()">&times;</button>

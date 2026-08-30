@@ -2,19 +2,19 @@
 {% block title %}Dashboard - FindMe{% endblock %}
 {% block content %}
 <div class="page-container">
-    <!-- Welcome Section -->
-    <div class="welcome-section">
-        <div class="welcome-content">
-            <h1 class="welcome-title">Welcome back, {{ session.full_name.split()[0] }}</h1>
-            <p class="welcome-subtitle">Here's what's happening with your lost &amp; found items today.</p>
-            <div class="welcome-actions">
-                <a href="{{ url_for('report_lost') }}" class="btn btn-danger">
-                    <i class="fas fa-exclamation-triangle"></i> Report Lost Item
-                </a>
-                <a href="{{ url_for('report_found') }}" class="btn btn-success">
-                    <i class="fas fa-hand-holding"></i> Report Found Item
-                </a>
-            </div>
+    <!-- Welcome Bar -->
+    <div class="welcome-bar">
+        <div>
+            <h1><i class="fas fa-house"></i> Welcome back, {{ session.full_name.split()[0] }}</h1>
+            <p>Here's what's happening with your lost &amp; found items today.</p>
+        </div>
+        <div class="welcome-actions">
+            <a href="{{ url_for('report_lost') }}" class="btn btn-danger">
+                <i class="fas fa-triangle-exclamation"></i> Report Lost Item
+            </a>
+            <a href="{{ url_for('report_found') }}" class="btn btn-success">
+                <i class="fas fa-hand-holding"></i> Report Found Item
+            </a>
         </div>
     </div>
 
@@ -22,14 +22,14 @@
     <div class="stat-grid">
         <a href="{{ url_for('my_reports') }}" class="stat-card stat-card-link">
             <div class="stat-icon" style="background: var(--gradient-danger);">
-                <i class="fas fa-exclamation-circle"></i>
+                <i class="fas fa-circle-exclamation"></i>
             </div>
             <div class="stat-number">{{ stats.total_lost }}</div>
             <div class="stat-label">Lost Items</div>
         </a>
         <a href="{{ url_for('my_reports') }}" class="stat-card stat-card-link">
             <div class="stat-icon" style="background: var(--gradient-success);">
-                <i class="fas fa-search"></i>
+                <i class="fas fa-magnifying-glass"></i>
             </div>
             <div class="stat-number">{{ stats.total_found }}</div>
             <div class="stat-label">Found Items</div>
@@ -43,7 +43,7 @@
         </a>
         <a href="{{ url_for('matches') }}" class="stat-card stat-card-link">
             <div class="stat-icon" style="background: var(--gradient-primary);">
-                <i class="fas fa-check-circle"></i>
+                <i class="fas fa-circle-check"></i>
             </div>
             <div class="stat-number">{{ stats.approved_matches }}</div>
             <div class="stat-label">Approved</div>
@@ -70,7 +70,7 @@
     </div>
     <div class="action-grid">
         <a href="{{ url_for('report_lost') }}" class="action-card">
-            <div class="action-icon" style="background: var(--gradient-danger);"><i class="fas fa-exclamation-triangle"></i></div>
+            <div class="action-icon" style="background: var(--gradient-danger);"><i class="fas fa-triangle-exclamation"></i></div>
             <span>Report Lost</span>
         </a>
         <a href="{{ url_for('report_found') }}" class="action-card">
@@ -78,7 +78,7 @@
             <span>Report Found</span>
         </a>
         <a href="{{ url_for('search') }}" class="action-card">
-            <div class="action-icon" style="background: var(--gradient-info);"><i class="fas fa-search"></i></div>
+            <div class="action-icon" style="background: var(--gradient-info);"><i class="fas fa-magnifying-glass"></i></div>
             <span>Search Items</span>
         </a>
         <a href="{{ url_for('matches') }}" class="action-card">
@@ -91,7 +91,7 @@
     <div class="dash-grid">
         <div class="dash-card">
             <div class="dash-card-header">
-                <h3><i class="fas fa-exclamation-triangle"></i> Recent Lost Items</h3>
+                <h3><i class="fas fa-triangle-exclamation"></i> Recent Lost Items</h3>
                 <a href="{{ url_for('my_reports') }}" class="btn btn-sm">View All</a>
             </div>
             {% if recent_lost %}
@@ -99,9 +99,9 @@
             <a href="{{ url_for('item_detail', item_type='lost', item_id=item[0]) }}" class="dash-item">
                 <div class="dash-item-info">
                     <span class="dash-item-name">{{ item[3] }}</span>
-                    <span class="dash-item-meta">{{ item[1] }} &middot; {{ item[12] }}</span>
+                    <span class="dash-item-meta">{{ item[1] }} &middot; {{ item[13] }}</span>
                 </div>
-                <span class="badge badge-{{ item[18] }}">{{ item[18] }}</span>
+                <span class="badge badge-{{ item[20] }}">{{ item[20] }}</span>
             </a>
             {% endfor %}
             {% else %}
@@ -114,7 +114,7 @@
 
         <div class="dash-card">
             <div class="dash-card-header">
-                <h3><i class="fas fa-search"></i> Recent Found Items</h3>
+                <h3><i class="fas fa-magnifying-glass"></i> Recent Found Items</h3>
                 <a href="{{ url_for('my_reports') }}" class="btn btn-sm">View All</a>
             </div>
             {% if recent_found %}
@@ -122,9 +122,9 @@
             <a href="{{ url_for('item_detail', item_type='found', item_id=item[0]) }}" class="dash-item">
                 <div class="dash-item-info">
                     <span class="dash-item-name">{{ item[3] }}</span>
-                    <span class="dash-item-meta">{{ item[1] }} &middot; {{ item[9] }}</span>
+                    <span class="dash-item-meta">{{ item[1] }} &middot; {{ item[13] }}</span>
                 </div>
-                <span class="badge badge-{{ item[16] }}">{{ item[16] }}</span>
+                <span class="badge badge-{{ item[21] }}">{{ item[21] }}</span>
             </a>
             {% endfor %}
             {% else %}
@@ -144,7 +144,7 @@
             {% for m in recent_matches %}
             <a href="{{ url_for('match_detail', match_id=m[0]) }}" class="dash-item">
                 <div class="dash-item-info">
-                    <span class="dash-item-name">{{ m[15] }} &harr; {{ m[38] }}</span>
+                    <span class="dash-item-name">{{ m[13] }} &harr; {{ m[15] }}</span>
                     <span class="dash-item-meta">Confidence: {{ m[3] }}%</span>
                 </div>
                 <span class="badge badge-{{ m[6] }}">{{ m[6] }}</span>

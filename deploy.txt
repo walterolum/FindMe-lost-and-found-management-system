@@ -38,7 +38,7 @@
 6. Create admin user in MySQL console:
    USE yourusername$findme_db;
    INSERT INTO users (full_name, email, password_hash, role_id, is_active, email_verified)
-   VALUES ('System Admin', 'admin@cavendish.ac.ug', '$2b$12$LJ3m4ys3Lk0TSwHnbfOMa.VCJ6G5i4j4k5k4k5k4k5k4k5k4k5O', 3, TRUE, TRUE);
+   VALUES ('System Admin', 'admin@cavendish.ac.ug', '$2b$12$JLE5FLemLa3NEt09kIBTU.pUu8mPsZe4dk8H6JaCFhp0fx38kUAti', 3, TRUE, TRUE);
    (default password: password123)
 
 7. Reload the web app -> Your site is live at yourusername.pythonanywhere.com

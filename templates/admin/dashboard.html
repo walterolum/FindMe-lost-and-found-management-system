@@ -3,7 +3,7 @@
 {% block content %}
 <div class="page-container">
     <div class="page-header">
-        <h1><i class="fas fa-cogs"></i> Administrator Dashboard</h1>
+        <h1><i class="fas fa-gears"></i> Administrator Dashboard</h1>
         <p class="page-subtitle">System overview and management</p>
     </div>
 
@@ -19,7 +19,7 @@
             <div class="stat-label">Students</div>
         </div>
         <div class="stat-card">
-            <div class="stat-icon" style="background: var(--gradient-success);"><i class="fas fa-chalkboard-teacher"></i></div>
+            <div class="stat-icon" style="background: var(--gradient-success);"><i class="fas fa-chalkboard-user"></i></div>
             <div class="stat-number">{{ total_lecturers }}</div>
             <div class="stat-label">Lecturers</div>
         </div>
@@ -29,7 +29,7 @@
             <div class="stat-label">Admins</div>
         </div>
         <div class="stat-card">
-            <div class="stat-icon" style="background: var(--gradient-danger);"><i class="fas fa-exclamation-triangle"></i></div>
+            <div class="stat-icon" style="background: var(--gradient-danger);"><i class="fas fa-triangle-exclamation"></i></div>
             <div class="stat-number">{{ total_lost }}</div>
             <div class="stat-label">Lost Items</div>
         </div>
@@ -44,7 +44,7 @@
             <div class="stat-label">Pending Matches</div>
         </div>
         <div class="stat-card">
-            <div class="stat-icon" style="background: var(--gradient-primary);"><i class="fas fa-check-circle"></i></div>
+            <div class="stat-icon" style="background: var(--gradient-primary);"><i class="fas fa-circle-check"></i></div>
             <div class="stat-number">{{ approved_matches }}</div>
             <div class="stat-label">Approved Matches</div>
         </div>
@@ -63,7 +63,7 @@
     <div class="dash-grid">
         <div class="dash-card">
             <div class="dash-card-header">
-                <h3><i class="fas fa-exclamation-triangle"></i> Recent Lost Items</h3>
+                <h3><i class="fas fa-triangle-exclamation"></i> Recent Lost Items</h3>
             </div>
             {% if recent_lost %}
             <div class="table-responsive">
@@ -72,8 +72,8 @@
                     <tbody>
                     {% for item in recent_lost %}
                     <tr data-label="Ref: {{ item[1] }}">
-                        <td>{{ item[1] }}</td><td>{{ item[4] }}</td><td>{{ item[12] }}</td>
-                        <td><span class="badge badge-{{ item[19] }}">{{ item[19] }}</span></td>
+                        <td>{{ item[1] }}</td><td>{{ item[3] }}</td><td>{{ item[13] }}</td>
+                        <td><span class="badge badge-{{ item[20] }}">{{ item[20] }}</span></td>
                     </tr>
                     {% endfor %}
                     </tbody>
@@ -95,8 +95,8 @@
                     <tbody>
                     {% for item in recent_found %}
                     <tr data-label="Ref: {{ item[1] }}">
-                        <td>{{ item[1] }}</td><td>{{ item[4] }}</td><td>{{ item[14] }}</td>
-                        <td><span class="badge badge-{{ item[19] }}">{{ item[19] }}</span></td>
+                        <td>{{ item[1] }}</td><td>{{ item[3] }}</td><td>{{ item[13] }}</td>
+                        <td><span class="badge badge-{{ item[21] }}">{{ item[21] }}</span></td>
                     </tr>
                     {% endfor %}
                     </tbody>
@@ -119,7 +119,7 @@
                     <tbody>
                     {% for m in pending_match_list %}
                     <tr>
-                        <td>{{ m[3] }}</td><td>{{ m[4] }}</td><td>{{ m[7] }}%</td>
+                        <td>{{ m[12] }}</td><td>{{ m[13] }}</td><td>{{ m[3] }}%</td>
                         <td><a href="{{ url_for('match_detail', match_id=m[0]) }}" class="btn btn-sm btn-accent">Review</a></td>
                     </tr>
                     {% endfor %}
@@ -133,7 +133,7 @@
 
         <div class="dash-card">
             <div class="dash-card-header">
-                <h3><i class="fas fa-history"></i> Recent Activity</h3>
+                <h3><i class="fas fa-clock-rotate-left"></i> Recent Activity</h3>
                 <a href="{{ url_for('admin_activity_logs') }}" class="btn btn-sm">View All</a>
             </div>
             {% if recent_logs %}
@@ -143,7 +143,7 @@
                 {% endfor %}
             </ul>
             {% else %}
-            <div class="empty-state"><i class="fas fa-history"></i><p>No recent activity</p></div>
+            <div class="empty-state"><i class="fas fa-clock-rotate-left"></i><p>No recent activity</p></div>
             {% endif %}
         </div>
     </div>

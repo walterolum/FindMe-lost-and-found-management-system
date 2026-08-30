@@ -1,13 +1,19 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>About FindMe - Cavendish University Uganda</title>
+    <link rel="icon" type="image/svg+xml" href="{{ url_for('static', filename='img/favicon.svg') }}">
+    <link rel="icon" type="image/png" sizes="32x32" href="{{ url_for('static', filename='img/favicon-32.png') }}">
+    <link rel="apple-touch-icon" href="{{ url_for('static', filename='img/apple-touch-icon.png') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+    <link rel="preconnect" href="https://cdnjs.cloudflare.com" crossorigin>
     <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" media="print" onload="this.media='all'">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" media="print" onload="this.media='all'">
+    <noscript><link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css"><link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet"></noscript>
     <script>
         (function(){
             var t=localStorage.getItem('findme-theme');
@@ -19,7 +25,7 @@
 <body class="no-sidebar">
     <nav class="navbar" id="publicNavbar">
         <div class="nav-container">
-            <a href="{{ url_for('index') }}" class="nav-brand"><i class="fas fa-search"></i> FindMe</a>
+            <a href="{{ url_for('index') }}" class="nav-brand"><i class="fas fa-magnifying-glass"></i> FindMe</a>
             <button class="nav-toggle" id="navToggle"><i class="fas fa-bars"></i></button>
             <ul class="nav-links" id="navLinks">
                 <li><a href="{{ url_for('index') }}">Home</a></li>
@@ -34,7 +40,7 @@
     <section class="section">
         <div class="container">
             <div class="page-header" style="text-align:center;margin-bottom:var(--space-8);">
-                <h1 style="display:flex;align-items:center;justify-content:center;gap:var(--space-3);"><i class="fas fa-info-circle"></i> About FindMe</h1>
+                <h1 style="display:flex;align-items:center;justify-content:center;gap:var(--space-3);"><i class="fas fa-circle-info"></i> About FindMe</h1>
                 <p class="page-subtitle" style="max-width:600px;margin:var(--space-4) auto 0;">
                     Cavendish University Uganda's AI-Powered Lost and Found Platform
                 </p>
@@ -69,7 +75,7 @@
             <div class="workflow-steps">
                 <div class="step-card">
                     <div class="step-number">1</div>
-                    <div class="step-icon"><i class="fas fa-file-alt"></i></div>
+                    <div class="step-icon"><i class="fas fa-file-lines"></i></div>
                     <h3>Report</h3>
                     <p>Report lost or found items with details and images.</p>
                 </div>

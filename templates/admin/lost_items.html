@@ -3,7 +3,7 @@
 {% block content %}
 <div class="page-container">
     <div class="page-header">
-        <h1><i class="fas fa-exclamation-triangle"></i> Lost Items</h1>
+        <h1><i class="fas fa-triangle-exclamation"></i> Lost Items</h1>
         <p class="page-subtitle">Manage reported lost items</p>
     </div>
 
@@ -26,20 +26,20 @@
                 <tr data-label="Item: {{ item[3] }}">
                     <td>{{ item[1] }}</td>
                     <td><strong>{{ item[3] }}</strong></td>
-                    <td>{{ item[23] or 'N/A' }}</td>
-                    <td>{{ item[24] or 'N/A' }}</td>
-                    <td>{{ item[12] }}</td>
-                    <td><span class="badge badge-{{ item[18] }}">{{ item[18] }}</span></td>
+                    <td>{{ item[25] or 'N/A' }}</td>
+                    <td>{{ item[26] or 'N/A' }}</td>
+                    <td>{{ item[13] }}</td>
+                    <td><span class="badge badge-{{ item[20] }}">{{ item[20] }}</span></td>
                     <td>
                         <form method="POST" action="{{ url_for('admin_edit_lost_status', item_id=item[0]) }}" style="display:inline;">
                             <select name="status" onchange="this.form.submit()" class="form-select form-select-sm">
-                                <option value="reported" {{ 'selected' if item[18] == 'reported' }}>Reported</option>
-                                <option value="under_review" {{ 'selected' if item[18] == 'under_review' }}>Under Review</option>
-                                <option value="potential_match" {{ 'selected' if item[18] == 'potential_match' }}>Potential Match</option>
-                                <option value="match_pending_approval" {{ 'selected' if item[18] == 'match_pending_approval' }}>Match Pending</option>
-                                <option value="match_approved" {{ 'selected' if item[18] == 'match_approved' }}>Approved</option>
-                                <option value="recovered" {{ 'selected' if item[18] == 'recovered' }}>Recovered</option>
-                                <option value="closed" {{ 'selected' if item[18] == 'closed' }}>Closed</option>
+                                <option value="reported" {{ 'selected' if item[20] == 'reported' }}>Reported</option>
+                                <option value="under_review" {{ 'selected' if item[20] == 'under_review' }}>Under Review</option>
+                                <option value="potential_match" {{ 'selected' if item[20] == 'potential_match' }}>Potential Match</option>
+                                <option value="match_pending_approval" {{ 'selected' if item[20] == 'match_pending_approval' }}>Match Pending</option>
+                                <option value="match_approved" {{ 'selected' if item[20] == 'match_approved' }}>Approved</option>
+                                <option value="recovered" {{ 'selected' if item[20] == 'recovered' }}>Recovered</option>
+                                <option value="closed" {{ 'selected' if item[20] == 'closed' }}>Closed</option>
                             </select>
                         </form>
                     </td>
@@ -49,7 +49,8 @@
         </table>
     </div>
     {% else %}
-    <div class="empty-state"><i class="fas fa-exclamation-circle"></i><p>No lost items reported</p></div>
+    <div class="empty-state"><i class="fas fa-circle-exclamation"></i><p>No lost items reported</p></div>
     {% endif %}
+    {% include '_pagination.html' %}
 </div>
 {% endblock %}

@@ -1,0 +1,237 @@
+{% extends 'base.html' %}
+{% block title %}Settings - FindMe{% endblock %}
+{% block content %}
+<div class="page-container">
+    <div class="page-header">
+        <h1><i class="fas fa-gear"></i> Settings</h1>
+        <p class="page-subtitle">Manage your profile and account preferences</p>
+    </div>
+
+    {% set faculty_map = {} %}
+    {% for f in faculties %}{% set _ = faculty_map.update({f[0]: f[1]}) %}{% endfor %}
+    {% set course_map = {} %}
+    {% for c in courses %}{% set _ = course_map.update({c[0]: c[1]}) %}{% endfor %}
+
+    <div class="tabs">
+        <button class="tab active" id="tabBtn-profile" onclick="showTab(event, 'profile')"><i class="fas fa-user"></i> Profile</button>
+        {% if is_admin %}
+        <button class="tab" id="tabBtn-administration" onclick="showTab(event, 'administration')"><i class="fas fa-shield-halved"></i> Administration</button>
+        {% endif %}
+    </div>
+
+    <div id="tab-profile" class="tab-content">
+        <div class="detail-grid">
+            <div class="dash-card">
+                <div class="dash-card-header">
+                    <h3><i class="fas fa-id-card"></i> Account Information</h3>
+                </div>
+                <table class="table">
+                    <tr><th>Full Name</th><td><strong>{{ user[1] }}</strong></td></tr>
+                    <tr><th>Email</th><td>{{ user[2] }}</td></tr>
+                    <tr><th>Phone</th><td>{{ user[3] or 'N/A' }}</td></tr>
+                    <tr><th>Student/Staff ID</th><td>{{ user[4] or 'N/A' }}</td></tr>
+                    <tr><th>Role</th><td><span class="badge badge-info">{{ role_name }}</span></td></tr>
+                    <tr><th>Faculty</th><td>{{ faculty_map.get(user[7], 'N/A') }}</td></tr>
+                    <tr><th>Course/Program</th><td>{{ course_map.get(user[8], 'N/A') }}</td></tr>
+                    <tr><th>Account Status</th><td><span class="badge badge-{{ 'active' if user[9] else 'inactive' }}">{{ 'Active' if user[9] else 'Inactive' }}</span></td></tr>
+                    <tr><th>Joined</th><td>{{ user[12] }}</td></tr>
+                </table>
+            </div>
+
+            <div>
+                <div class="dash-card" style="margin-bottom:var(--space-5);">
+                    <div class="dash-card-header">
+                        <h3><i class="fas fa-camera"></i> Profile Picture</h3>
+                    </div>
+                    <form method="POST" action="{{ url_for('settings') }}" enctype="multipart/form-data" id="avatarForm">
+                        <div class="avatar-upload-section">
+                            <div class="avatar-preview" id="avatarPreview">
+                                {% if user[11] %}
+                                    <img src="{{ url_for('serve_image', filename=user[11]) }}" alt="Profile" id="avatarImg">
+                                {% else %}
+                                    <div class="avatar-placeholder" id="avatarPlaceholder">
+                                        <i class="fas fa-user"></i>
+                                    </div>
+                                {% endif %}
+                            </div>
+                            <div class="avatar-upload-actions">
+                                <label for="profile_image" class="btn btn-outline btn-sm" style="cursor:pointer;">
+                                    <i class="fas fa-cloud-arrow-up"></i> Choose Photo
+                                </label>
+                                <input type="file" id="profile_image" name="profile_image" accept="image/jpeg,image/png,image/webp" style="display:none;" onchange="previewAvatar(this)">
+                                <p class="avatar-hint">JPG, PNG or WebP. Max 5 MB.</p>
+                            </div>
+                        </div>
+                        <input type="hidden" name="full_name" value="{{ user[1] }}">
+                        <input type="hidden" name="phone" value="{{ user[3] or '' }}">
+                        <input type="hidden" name="student_staff_id" value="{{ user[4] or '' }}">
+                        <div class="avatar-submit" id="avatarSubmit" style="display:none;">
+                            <button type="submit" class="btn btn-accent btn-sm">
+                                <i class="fas fa-floppy-disk"></i> Save Photo
+                            </button>
+                            <button type="button" class="btn btn-ghost btn-sm" onclick="cancelAvatar()">
+                                <i class="fas fa-xmark"></i> Cancel
+                            </button>
+                        </div>
+                    </form>
+                </div>
+
+                <div class="dash-card">
+                    <div class="dash-card-header">
+                        <h3><i class="fas fa-pen-to-square"></i> Edit Profile</h3>
+                    </div>
+                    <form method="POST" action="{{ url_for('settings') }}">
+                        <div class="form-group">
+                            <label for="full_name">Full Name</label>
+                            <input type="text" id="full_name" name="full_name" value="{{ user[1] }}">
+                        </div>
+                        <div class="form-group">
+                            <label for="phone">Phone</label>
+                            <input type="text" id="phone" name="phone" value="{{ user[3] or '' }}">
+                        </div>
+                        <div class="form-group">
+                            <label for="student_staff_id">Student/Staff ID</label>
+                            <input type="text" id="student_staff_id" name="student_staff_id" value="{{ user[4] or '' }}">
+                        </div>
+                        <div style="display:flex;gap:var(--space-3);flex-wrap:wrap;">
+                            <button type="submit" class="btn btn-accent">
+                                <i class="fas fa-floppy-disk"></i> Update Profile
+                            </button>
+                            <a href="{{ url_for('change_password') }}" class="btn btn-outline">
+                                <i class="fas fa-key"></i> Change Password
+                            </a>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    {% if is_admin %}
+    <div id="tab-administration" class="tab-content" style="display:none;">
+        <div class="detail-grid">
+            <div class="dash-card">
+                <div class="dash-card-header">
+                    <h3><i class="fas fa-circle-info"></i> Application Information</h3>
+                </div>
+                <table class="table">
+                    <tr><th>Application Name</th><td><strong>FindMe</strong></td></tr>
+                    <tr><th>University</th><td>Cavendish University Uganda</td></tr>
+                    <tr><th>Database</th><td>MySQL (flask_mysqldb)</td></tr>
+                    <tr><th>Backend</th><td>Python Flask</td></tr>
+                    <tr><th>AI Matching</th><td><span class="badge badge-active">Integrated</span></td></tr>
+                    <tr><th>Email Backend</th><td>Flask-Mail (Console)</td></tr>
+                    <tr><th>File Upload</th><td>Max 16MB</td></tr>
+                </table>
+            </div>
+
+            <div class="dash-card" style="border-color:var(--danger-200);">
+                <div class="dash-card-header" style="border-color:var(--danger-200);">
+                    <h3 style="color:var(--danger);"><i class="fas fa-trash-can"></i> Reset Data</h3>
+                </div>
+                <p style="font-size:var(--text-sm);color:var(--text-secondary);margin-bottom:var(--space-4);">
+                    Permanently delete data from the system. This action cannot be undone.
+                </p>
+
+                <form method="POST" action="{{ url_for('admin_reset_data') }}" id="resetForm">
+                    <div class="form-group">
+                        <label><i class="fas fa-layer-group"></i> What to reset</label>
+                        <div style="display:flex;flex-direction:column;gap:var(--space-3);margin-top:var(--space-2);">
+                            <label style="display:flex;align-items:flex-start;gap:var(--space-3);padding:var(--space-3) var(--space-4);background:var(--bg-secondary);border:1px solid var(--border);border-radius:var(--radius-md);cursor:pointer;transition:all var(--duration-normal) var(--ease-out);">
+                                <input type="radio" name="reset_type" value="activity" checked style="margin-top:3px;">
+                                <div>
+                                    <strong style="font-size:var(--text-sm);">Reset Activity Data</strong>
+                                    <p style="font-size:var(--text-xs);color:var(--text-muted);margin:2px 0 0;">Clears lost/found items, matches, notifications, recoveries, and activity logs. Keeps all user accounts.</p>
+                                </div>
+                            </label>
+                            <label style="display:flex;align-items:flex-start;gap:var(--space-3);padding:var(--space-3) var(--space-4);background:var(--bg-secondary);border:1px solid var(--border);border-radius:var(--radius-md);cursor:pointer;transition:all var(--duration-normal) var(--ease-out);">
+                                <input type="radio" name="reset_type" value="all" style="margin-top:3px;">
+                                <div>
+                                    <strong style="font-size:var(--text-sm);color:var(--danger);">Factory Reset (All Data)</strong>
+                                    <p style="font-size:var(--text-xs);color:var(--text-muted);margin:2px 0 0;">Clears all activity data AND deletes all non-admin user accounts. Admin accounts are preserved.</p>
+                                </div>
+                            </label>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="confirm_input"><i class="fas fa-shield-halved"></i> Type <strong>RESET</strong> to confirm</label>
+                        <input type="text" id="confirm_input" name="confirm" placeholder="Type RESET" style="max-width:300px;" autocomplete="off">
+                    </div>
+
+                    <button type="submit" class="btn btn-danger" id="resetBtn" disabled>
+                        <i class="fas fa-trash-can"></i> Reset Data
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+</div>
+
+<script>
+function showTab(event, tab) {
+    document.querySelectorAll('.tab-content').forEach(function(el) { el.style.display = 'none'; });
+    document.querySelectorAll('.tab').forEach(function(el) { el.classList.remove('active'); });
+    document.getElementById('tab-' + tab).style.display = 'block';
+    event.target.closest('.tab').classList.add('active');
+}
+
+function previewAvatar(input) {
+    if (input.files && input.files[0]) {
+        if (input.files[0].size > 5 * 1024 * 1024) {
+            alert('Image must be under 5 MB.');
+            input.value = '';
+            return;
+        }
+        var reader = new FileReader();
+        reader.onload = function(e) {
+            var preview = document.getElementById('avatarPreview');
+            var existingImg = document.getElementById('avatarImg');
+            var existingPlaceholder = document.getElementById('avatarPlaceholder');
+            if (existingPlaceholder) existingPlaceholder.style.display = 'none';
+            if (existingImg) {
+                existingImg.src = e.target.result;
+            } else {
+                var img = document.createElement('img');
+                img.id = 'avatarImg';
+                img.src = e.target.result;
+                img.alt = 'Profile';
+                preview.appendChild(img);
+            }
+        };
+        reader.readAsDataURL(input.files[0]);
+        document.getElementById('avatarSubmit').style.display = 'flex';
+    }
+}
+function cancelAvatar() {
+    document.getElementById('profile_image').value = '';
+    document.getElementById('avatarSubmit').style.display = 'none';
+}
+
+(function(){
+    var input = document.getElementById('confirm_input');
+    var btn = document.getElementById('resetBtn');
+    var form = document.getElementById('resetForm');
+    if (input && btn && form) {
+        input.addEventListener('input', function(){
+            btn.disabled = input.value !== 'RESET';
+        });
+        form.addEventListener('submit', function(e){
+            var type = form.querySelector('input[name=reset_type]:checked').value;
+            var msg = type === 'all'
+                ? 'This will delete ALL user accounts (except admins) and all activity data. Type RESET and click again.'
+                : 'This will delete all lost/found items, matches, notifications, and activity logs. Type RESET and click again.';
+            if(input.value !== 'RESET'){
+                e.preventDefault();
+                alert('Please type RESET to confirm.');
+                return;
+            }
+            if(!confirm(msg)){
+                e.preventDefault();
+            }
+        });
+    }
+})();
+</script>
+{% endblock %}

@@ -8,26 +8,6 @@ CREATE TABLE roles (
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
-CREATE TABLE users (
-    id INT AUTO_INCREMENT PRIMARY KEY,
-    full_name VARCHAR(150) NOT NULL,
-    email VARCHAR(150) NOT NULL UNIQUE,
-    phone VARCHAR(20),
-    student_staff_id VARCHAR(50),
-    password_hash VARCHAR(255) NOT NULL,
-    role_id INT NOT NULL,
-    faculty_id INT,
-    course_id INT,
-    is_active BOOLEAN DEFAULT TRUE,
-    email_verified BOOLEAN DEFAULT FALSE,
-    profile_image VARCHAR(500) DEFAULT NULL,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    FOREIGN KEY (role_id) REFERENCES roles(id),
-    FOREIGN KEY (faculty_id) REFERENCES faculties(id),
-    FOREIGN KEY (course_id) REFERENCES courses(id)
-);
-
 CREATE TABLE faculties (
     id INT AUTO_INCREMENT PRIMARY KEY,
     name VARCHAR(100) NOT NULL,
@@ -46,6 +26,26 @@ CREATE TABLE courses (
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     FOREIGN KEY (faculty_id) REFERENCES faculties(id)
+);
+
+CREATE TABLE users (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    full_name VARCHAR(150) NOT NULL,
+    email VARCHAR(150) NOT NULL UNIQUE,
+    phone VARCHAR(20),
+    student_staff_id VARCHAR(50),
+    password_hash VARCHAR(255) NOT NULL,
+    role_id INT NOT NULL,
+    faculty_id INT,
+    course_id INT,
+    is_active BOOLEAN DEFAULT TRUE,
+    email_verified BOOLEAN DEFAULT FALSE,
+    profile_image VARCHAR(500) DEFAULT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    FOREIGN KEY (role_id) REFERENCES roles(id),
+    FOREIGN KEY (faculty_id) REFERENCES faculties(id),
+    FOREIGN KEY (course_id) REFERENCES courses(id)
 );
 
 CREATE TABLE categories (
@@ -75,6 +75,7 @@ CREATE TABLE lost_items (
     brand VARCHAR(100),
     model VARCHAR(100),
     color VARCHAR(50),
+    shape VARCHAR(50),
     serial_number VARCHAR(100),
     unique_marks TEXT,
     description TEXT,
@@ -85,6 +86,7 @@ CREATE TABLE lost_items (
     location_detail TEXT,
     additional_details TEXT,
     image_path VARCHAR(300),
+    shape_data TEXT,
     status ENUM('reported','under_review','potential_match','match_pending_approval','match_approved','match_rejected','owner_verification_pending','owner_verified','recovered','closed','archived') DEFAULT 'reported',
     verified_by INT,
     verified_at TIMESTAMP NULL,
@@ -105,7 +107,11 @@ CREATE TABLE found_items (
     brand VARCHAR(100),
     model VARCHAR(100),
     color VARCHAR(50),
+    shape VARCHAR(50),
+    serial_number VARCHAR(100),
+    unique_marks TEXT,
     description TEXT,
+    approximate_value DECIMAL(12,2),
     date_found DATE NOT NULL,
     time_found TIME,
     location_id INT,
@@ -113,6 +119,7 @@ CREATE TABLE found_items (
     additional_details TEXT,
     current_location VARCHAR(255),
     image_path VARCHAR(300),
+    shape_data TEXT,
     status ENUM('reported','under_review','potential_match','match_pending_approval','match_approved','match_rejected','owner_verification_pending','owner_verified','recovered','closed','archived') DEFAULT 'reported',
     verified_by INT,
     verified_at TIMESTAMP NULL,
@@ -129,8 +136,7 @@ CREATE TABLE item_images (
     item_id INT NOT NULL,
     item_type ENUM('lost','found') NOT NULL,
     image_path VARCHAR(300) NOT NULL,
-    uploaded_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (item_id) REFERENCES lost_items(id) ON DELETE CASCADE
+    uploaded_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
 CREATE TABLE matches (
@@ -214,12 +220,17 @@ CREATE TABLE activity_logs (
 
 CREATE INDEX idx_lost_items_reporter ON lost_items(reporter_id);
 CREATE INDEX idx_lost_items_status ON lost_items(status);
+CREATE INDEX idx_lost_items_created ON lost_items(created_at);
 CREATE INDEX idx_found_items_finder ON found_items(finder_id);
 CREATE INDEX idx_found_items_status ON found_items(status);
+CREATE INDEX idx_found_items_created ON found_items(created_at);
 CREATE INDEX idx_matches_status ON matches(status);
-CREATE INDEX idx_notifications_user ON notifications(user_id);
-CREATE INDEX idx_notifications_read ON notifications(is_read);
 CREATE INDEX idx_matches_lost ON matches(lost_item_id);
 CREATE INDEX idx_matches_found ON matches(found_item_id);
+CREATE INDEX idx_matches_created ON matches(created_at);
+CREATE INDEX idx_notifications_user ON notifications(user_id);
+CREATE INDEX idx_notifications_read ON notifications(is_read);
+CREATE INDEX idx_notifications_created ON notifications(created_at);
 CREATE INDEX idx_users_role ON users(role_id);
 CREATE INDEX idx_users_active ON users(is_active);
+CREATE INDEX idx_activity_logs_created ON activity_logs(created_at);

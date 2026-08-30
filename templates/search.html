@@ -3,7 +3,7 @@
 {% block content %}
 <div class="page-container">
     <div class="page-header">
-        <h1><i class="fas fa-search"></i> Search Items</h1>
+        <h1><i class="fas fa-magnifying-glass"></i> Search Items</h1>
         <p class="page-subtitle">Find lost or found items across campus</p>
     </div>
 
@@ -16,7 +16,7 @@
                 <select name="category_id">
                     <option value="">All Categories</option>
                     {% for cat in categories %}
-                    <option value="{{ cat[0] }}" {{ 'selected' if category_id == cat[0] }}>{{ cat[1] }}</option>
+                    <option value="{{ cat[0] }}" {{ 'selected' if category_id == cat[0]|string }}>{{ cat[1] }}</option>
                     {% endfor %}
                 </select>
             </div>
@@ -24,7 +24,7 @@
                 <select name="location_id">
                     <option value="">All Locations</option>
                     {% for loc in locations %}
-                    <option value="{{ loc[0] }}" {{ 'selected' if location_id == loc[0] }}>{{ loc[1] }}</option>
+                    <option value="{{ loc[0] }}" {{ 'selected' if location_id == loc[0]|string }}>{{ loc[1] }}</option>
                     {% endfor %}
                 </select>
             </div>
@@ -39,14 +39,14 @@
                 <select name="status">
                     <option value="">All Statuses</option>
                     <option value="reported" {{ 'selected' if status == 'reported' }}>Reported</option>
-                    <option value="under_review">Under Review</option>
-                    <option value="potential_match">Potential Match</option>
-                    <option value="match_pending_approval">Pending Approval</option>
-                    <option value="match_approved">Approved</option>
-                    <option value="recovered">Recovered</option>
+                    <option value="under_review" {{ 'selected' if status == 'under_review' }}>Under Review</option>
+                    <option value="potential_match" {{ 'selected' if status == 'potential_match' }}>Potential Match</option>
+                    <option value="match_pending_approval" {{ 'selected' if status == 'match_pending_approval' }}>Pending Approval</option>
+                    <option value="match_approved" {{ 'selected' if status == 'match_approved' }}>Approved</option>
+                    <option value="recovered" {{ 'selected' if status == 'recovered' }}>Recovered</option>
                 </select>
             </div>
-            <button type="submit" class="btn btn-accent"><i class="fas fa-search"></i> Search</button>
+            <button type="submit" class="btn btn-accent"><i class="fas fa-magnifying-glass"></i> Search</button>
         </div>
     </form>
 
@@ -84,13 +84,13 @@
     </div>
     {% elif q or category_id or location_id %}
     <div class="empty-state">
-        <i class="fas fa-search"></i>
+        <i class="fas fa-magnifying-glass"></i>
         <h3>No Results Found</h3>
         <p>Try adjusting your search terms or filters</p>
     </div>
     {% else %}
     <div class="empty-state">
-        <i class="fas fa-search"></i>
+        <i class="fas fa-magnifying-glass"></i>
         <h3>Search for Items</h3>
         <p>Enter a search term or use filters to find items</p>
     </div>

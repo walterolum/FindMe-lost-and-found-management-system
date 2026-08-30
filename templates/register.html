@@ -1,13 +1,19 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Create Account - FindMe</title>
+    <link rel="icon" type="image/svg+xml" href="{{ url_for('static', filename='img/favicon.svg') }}">
+    <link rel="icon" type="image/png" sizes="32x32" href="{{ url_for('static', filename='img/favicon-32.png') }}">
+    <link rel="apple-touch-icon" href="{{ url_for('static', filename='img/apple-touch-icon.png') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+    <link rel="preconnect" href="https://cdnjs.cloudflare.com" crossorigin>
     <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" media="print" onload="this.media='all'">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" media="print" onload="this.media='all'">
+    <noscript><link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css"><link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet"></noscript>
     <script>
         (function(){
             var t=localStorage.getItem('findme-theme');
@@ -20,7 +26,7 @@
     <div class="auth-left">
         <div class="auth-left-content">
             <a href="{{ url_for('index') }}" class="auth-brand">
-                <i class="fas fa-search"></i> FindMe
+                <i class="fas fa-magnifying-glass"></i> FindMe
             </a>
             <h1>Join FindMe Today</h1>
             <p>Create your free account and never lose anything at Cavendish University again.</p>
@@ -45,7 +51,7 @@
     </div>
 
     <div class="auth-right">
-        <div class="auth-form-container" style="max-width:480px;">
+        <div class="auth-form-container" style="max-width:520px;">
             <div class="auth-header">
                 <h2>Create Account</h2>
                 <p>Join the Cavendish University lost &amp; found community</p>
@@ -71,8 +77,8 @@
                             <input type="text" id="full_name" name="full_name" placeholder="John Doe" required>
                         </div>
                         <div class="form-group">
-                            <label for="student_id">Student ID (optional)</label>
-                            <input type="text" id="student_id" name="student_id" placeholder="e.g. CU2024/001">
+<label for="student_id" style="color:#1e40af;">Student ID (optional)</label>
+                             <input type="text" id="student_id" name="student_id" placeholder="e.g. 123-456" style="border-color:#1e40af;" onfocus="this.style.borderColor='#1e40af';this.style.boxShadow='0 0 0 3px rgba(30,64,175,0.12)'" onblur="this.style.borderColor='';this.style.boxShadow=''">
                         </div>
                     </div>
                 </div>
@@ -91,6 +97,41 @@
                         <div class="form-group">
                             <label for="confirm_password">Confirm Password</label>
                             <input type="password" id="confirm_password" name="confirm_password" placeholder="Repeat password" required minlength="6">
+                        </div>
+                    </div>
+                </div>
+
+                <div class="form-section" style="background:transparent;border:none;padding:0;box-shadow:none;">
+                    <h3 class="form-section-title"><i class="fas fa-graduation-cap"></i> Academic Information</h3>
+                    <div class="form-group">
+                        <label>I am a</label>
+                        <div style="display:flex;gap:var(--space-4);">
+                            <label style="display:flex;align-items:center;gap:8px;cursor:pointer;">
+                                <input type="radio" name="user_type" value="Student" checked style="width:auto;"> Student
+                            </label>
+                            <label style="display:flex;align-items:center;gap:8px;cursor:pointer;">
+                                <input type="radio" name="user_type" value="Lecturer" style="width:auto;"> Lecturer/Staff
+                            </label>
+                        </div>
+                    </div>
+                    <div class="form-grid-2">
+                        <div class="form-group">
+                            <label for="faculty_id">Faculty</label>
+                            <select id="faculty_id" name="faculty_id">
+                                <option value="">-- Select Faculty --</option>
+                                {% for f in faculties %}
+                                <option value="{{ f[0] }}">{{ f[1] }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="course_id">Course/Program</label>
+                            <select id="course_id" name="course_id">
+                                <option value="">-- Select Course --</option>
+                                {% for c in courses %}
+                                <option value="{{ c[0] }}">{{ c[1] }}</option>
+                                {% endfor %}
+                            </select>
                         </div>
                     </div>
                 </div>

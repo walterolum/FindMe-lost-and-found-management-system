@@ -9,7 +9,7 @@
 
     <div class="tabs">
         <button class="tab active" onclick="showTab(event, 'lost')">
-            <i class="fas fa-exclamation-triangle"></i> Lost Items
+            <i class="fas fa-triangle-exclamation"></i> Lost Items
         </button>
         <button class="tab" onclick="showTab(event, 'found')">
             <i class="fas fa-hand-holding"></i> Found Items
@@ -35,9 +35,9 @@
                     <tr data-label="Item: {{ r[3] }}">
                         <td>{{ r[1] }}</td>
                         <td><strong>{{ r[3] }}</strong></td>
-                        <td>{{ r[4] }}</td>
-                        <td>{{ r[12] }}</td>
-                        <td><span class="badge badge-{{ r[18] }}">{{ r[18] }}</span></td>
+                        <td>{{ r[25] or 'N/A' }}</td>
+                        <td>{{ r[13] }}</td>
+                        <td><span class="badge badge-{{ r[20] }}">{{ r[20] }}</span></td>
                         <td><a href="{{ url_for('item_detail', item_type='lost', item_id=r[0]) }}" class="btn btn-sm btn-accent">View</a></td>
                     </tr>
                     {% endfor %}
@@ -46,7 +46,7 @@
         </div>
         {% else %}
         <div class="empty-state">
-            <i class="fas fa-exclamation-circle"></i>
+            <i class="fas fa-circle-exclamation"></i>
             <h3>No Lost Reports</h3>
             <p>You haven't reported any lost items yet</p>
             <a href="{{ url_for('report_lost') }}" class="btn btn-danger">Report Lost Item</a>
@@ -73,9 +73,9 @@
                     <tr data-label="Item: {{ r[3] }}">
                         <td>{{ r[1] }}</td>
                         <td><strong>{{ r[3] }}</strong></td>
-                        <td>{{ r[4] }}</td>
-                        <td>{{ r[9] }}</td>
-                        <td><span class="badge badge-{{ r[16] }}">{{ r[16] }}</span></td>
+                        <td>{{ r[26] or 'N/A' }}</td>
+                        <td>{{ r[13] }}</td>
+                        <td><span class="badge badge-{{ r[21] }}">{{ r[21] }}</span></td>
                         <td><a href="{{ url_for('item_detail', item_type='found', item_id=r[0]) }}" class="btn btn-sm btn-accent">View</a></td>
                     </tr>
                     {% endfor %}
