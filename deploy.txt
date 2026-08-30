@@ -1,44 +1,85 @@
-=== DEPLOY TO PYTHONANYWHERE (FREE) ===
+=== FINDME DEPLOY GUIDE (COMPATIBLE HOSTS) =================================
+Repo: https://github.com/walterolum/FindMe-lost-and-found-management-system
+Full guide: see DEPLOY.md
+
+Quick options:
+- PythonAnywhere (FREE + MySQL built-in) -> Recommended for this stack
+- Render (free, needs external MySQL like PlanetScale/Aiven)
+- Railway (MySQL plugin, fastest)
+- Docker (Fly.io / DigitalOcean / any) -> docker-compose up --build
+- Heroku (Procfile -> gunicorn wsgi:application)
+
+All hosts read: Procfile, runtime.txt, render.yaml, railway.json, nixpacks.toml, Dockerfile, wsgi.py (pymysql + whitenoise), /health
+
+=== 1) PYTHONANYWHERE (FREE) - RECOMMENDED ===
 
 1. Sign up at https://www.pythonanywhere.com
 
-2. Open a Bash console and run:
-   git clone https://github.com/YOUR_USERNAME/findme.git
-   cd findme
-   pip install --user virtualenv
-   virtualenv venv
+2. Bash console:
+   git clone https://github.com/walterolum/FindMe-lost-and-found-management-system.git
+   cd FindMe-lost-and-found-management-system
+   python3 -m venv venv
    source venv/bin/activate
    pip install -r requirements.txt
-   mkdir -p static/uploads/avatars
-   mkdir -p static/uploads/lost
-   mkdir -p static/uploads/found
+   mkdir -p static/uploads/{avatars,lost,found}
 
-3. Go to Databases tab -> Initialize MySQL -> set password
-   Open MySQL console and run:
+3. Databases tab -> Initialize MySQL:
    CREATE DATABASE yourusername$findme_db;
    USE yourusername$findme_db;
-   SOURCE /home/yourusername/findme/schema.sql;
+   SOURCE /home/yourusername/FindMe-lost-and-found-management-system/schema.sql;
+   SOURCE /home/yourusername/FindMe-lost-and-found-management-system/seed.sql;
+   # or: python init_db.py after setting env
 
-4. Update config.py:
-   MYSQL_USER = 'yourusername'
-   MYSQL_HOST = 'yourusername.mysql.pythonanywhere-services.com'
-   MYSQL_PASSWORD = 'your-mysql-password'
-   SECRET_KEY = 'generate-a-random-secret-key'
+4. Set env (via .env or Web -> WSGI env):
+   SECRET_KEY=random-32-char
+   MYSQL_HOST=yourusername.mysql.pythonanywhere-services.com
+   MYSQL_USER=yourusername
+   MYSQL_PASSWORD=your-mysql-password
+   MYSQL_DB=yourusername$findme_db
+   # Or single URL: DATABASE_URL=mysql://user:pass@host:3306/yourusername$findme_db
 
-5. Go to Web tab -> Add web app -> Manual config -> Python 3.10
-   Source code: /home/yourusername/findme
-   Working directory: /home/yourusername/findme
-   WSGI file: point to /home/yourusername/findme/wsgi.py
-   Virtualenv: /home/yourusername/findme/venv
-
+5. Web tab -> Add web app -> Manual -> Python 3.11
+   Source code: /home/yourusername/FindMe-lost-and-found-management-system
+   Working directory: same
+   WSGI file: /home/yourusername/FindMe-lost-and-found-management-system/wsgi.py
+   Virtualenv: /home/yourusername/FindMe-lost-and-found-management-system/venv
    Static files:
-   /static/ -> /home/yourusername/findme/static/
-   /uploads/ -> /home/yourusername/findme/static/uploads/
+   /static/  -> /home/yourusername/FindMe-lost-and-found-management-system/static/
+   /uploads/ -> /home/yourusername/FindMe-lost-and-found-management-system/static/uploads/
 
-6. Create admin user in MySQL console:
-   USE yourusername$findme_db;
-   INSERT INTO users (full_name, email, password_hash, role_id, is_active, email_verified)
-   VALUES ('System Admin', 'admin@cavendish.ac.ug', '$2b$12$JLE5FLemLa3NEt09kIBTU.pUu8mPsZe4dk8H6JaCFhp0fx38kUAti', 3, TRUE, TRUE);
-   (default password: password123)
+6. Admin seed included; login admin@cavendish.ac.ug / password123
 
-7. Reload the web app -> Your site is live at yourusername.pythonanywhere.com
+7. Reload -> https://yourusername.pythonanywhere.com (check /health)
+
+=== 2) RENDER (render.yaml) ===
+
+1. Create external MySQL (PlanetScale/Aiven free) -> copy mysql://...
+2. Render dashboard -> New -> Blueprint -> connect repo walterolum/FindMe-lost-and-found-management-system (reads render.yaml)
+3. Add env DATABASE_URL=mysql://user:pass@host:3306/db
+4. Deploy -> run in Shell: python init_db.py or mysql < schema.sql
+5. Live at https://findme.onrender.com -> /health
+
+=== 3) RAILWAY (railway.json) ===
+
+1. railway.app -> New Project -> Deploy from GitHub -> FindMe...
+2. Add MySQL plugin (auto injects DATABASE_URL)
+3. Variables: SECRET_KEY=... FLASK_ENV=production
+4. Deploy -> Railway runs gunicorn wsgi:application via railway.json/nixpacks.toml
+5. Console -> python init_db.py
+
+=== 4) DOCKER (any host) ===
+
+docker-compose up --build  # app http://localhost:5000, db 3306, auto seed
+# For Fly.io: fly launch --dockerfile Dockerfile; fly secrets set ...; fly deploy
+
+=== 5) HEROKU (Procfile) ===
+
+heroku create findme-cu
+heroku addons:create jawsdb:kitefin
+heroku config:set SECRET_KEY=$(openssl rand -hex 16)
+git push heroku master
+heroku run python init_db.py
+
+=== ENV VARS (.env.example) ===
+SECRET_KEY, MYSQL_HOST/PORT/USER/PASSWORD/DB or DATABASE_URL/MYSQL_URL
+See DEPLOY.md for full matrix and verification (curl /health).

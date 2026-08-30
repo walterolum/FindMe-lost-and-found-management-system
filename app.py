@@ -4,6 +4,13 @@ import threading
 from datetime import datetime, timedelta
 from functools import wraps
 
+# Hosting-friendly: use PyMySQL as MySQLdb before flask_mysqldb loads
+try:
+    import pymysql
+    pymysql.install_as_MySQLdb()
+except ImportError:
+    pass
+
 import bcrypt
 from flask import (
     Flask, render_template, request, redirect, url_for,
@@ -211,6 +218,12 @@ def index():
 @app.route('/about')
 def about():
     return render_template('about.html')
+
+
+@app.route('/health')
+def health():
+    """Health check for hosting platforms (Render/Railway/Fly). No DB required."""
+    return jsonify({'status': 'ok', 'service': 'FindMe'}), 200
 
 
 @app.route('/login', methods=['GET', 'POST'])
@@ -1751,4 +1764,7 @@ def inject_now():
 # ==================== RUN ====================
 
 if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=5000)
+    # Hosting platforms set PORT env (Render/Railway/Heroku); default 5000
+    port = int(os.environ.get('PORT', 5000))
+    debug = os.environ.get('FLASK_ENV') != 'production'
+    app.run(host='0.0.0.0', port=port, debug=debug)

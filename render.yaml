@@ -1,0 +1,39 @@
+services:
+  - type: web
+    name: findme
+    env: python
+    region: frankfurt # change to oregon/singapore as needed
+    plan: free
+    buildCommand: "pip install -r requirements.txt"
+    startCommand: "gunicorn wsgi:application --bind 0.0.0.0:$PORT --workers 3 --timeout 120"
+    healthCheckPath: /health
+    envVars:
+      - key: SECRET_KEY
+        generateValue: true
+      - key: FLASK_ENV
+        value: production
+      # Set these in Render dashboard -> Environment (use external MySQL like PlanetScale, Railway MySQL, Aiven, or Render's forthcoming MySQL)
+      - key: MYSQL_HOST
+        sync: false
+      - key: MYSQL_PORT
+        value: 3306
+      - key: MYSQL_USER
+        sync: false
+      - key: MYSQL_PASSWORD
+        sync: false
+      - key: MYSQL_DB
+        value: findme_db
+      # Alternatively use single URL:
+      # - key: DATABASE_URL
+      #   sync: false
+    # For Docker-based deploy alternative, uncomment:
+    # env: docker
+    # dockerCommand: ""
+    # dockerContext: .
+
+# Note: Render does not run MySQL in free tier. Use an external MySQL:
+# - PlanetScale (free), Aiven (free), Railway MySQL, or TiDB Cloud.
+# Create DB, then copy connection string to DATABASE_URL or MYSQL_* vars above.
+# After first deploy, run schema.sql and seed.sql via external MySQL client:
+#   mysql -h $MYSQL_HOST -u $MYSQL_USER -p$MYSQL_PASSWORD $MYSQL_DB < schema.sql
+#   mysql -h $MYSQL_HOST -u $MYSQL_USER -p$MYSQL_PASSWORD $MYSQL_DB < seed.sql

@@ -80,6 +80,13 @@ findme/
         └── settings.html
 ```
 
+## Deploy to Hosting (One-Click)
+
+[![Deploy to Render](https://render.com/images/deploy-to-render-button.svg)](https://render.com/deploy?repo=https://github.com/walterolum/FindMe-lost-and-found-management-system)
+[![Deploy on Railway](https://railway.app/button.svg)](https://railway.app/template/github/walterolum/FindMe-lost-and-found-management-system)
+
+**Compatible hosts (Flask + MySQL):** PythonAnywhere (free, built-in MySQL - *recommended*), Render, Railway, Fly.io, DigitalOcean App Platform, Heroku. See [`DEPLOY.md`](DEPLOY.md) and [`deploy.txt`](deploy.txt) for full guide. This repo includes `Procfile`, `render.yaml`, `railway.json`, `Dockerfile`, `docker-compose.yml`, `wsgi.py` (with `pymysql` + `whitenoise`), and `/health` for hosting checks. Quick Docker: `docker-compose up --build` -> http://localhost:5000.
+
 ## Installation Instructions
 
 ### Prerequisites
