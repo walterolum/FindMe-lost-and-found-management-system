@@ -19,7 +19,6 @@ concurrency:
 jobs:
   deploy:
     runs-on: ubuntu-latest
-    if: ${{ secrets.PA_API_TOKEN != '' && secrets.PA_USERNAME != '' }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -40,7 +39,7 @@ jobs:
         env:
           PA_API_TOKEN: ${{ secrets.PA_API_TOKEN }}
           PA_USERNAME: ${{ secrets.PA_USERNAME }}
-          PA_DOMAIN: ${{ secrets.PA_DOMAIN || '' }}
+          PA_DOMAIN: ${{ secrets.PA_DOMAIN }}
         run: |
           set -euo pipefail
           PA_DOMAIN="${PA_DOMAIN:-${PA_USERNAME}.pythonanywhere.com}"
