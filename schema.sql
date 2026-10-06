@@ -1,6 +1,5 @@
 -- FindMe database schema
 -- Imports into WHATEVER database is selected by the connection:
---   * local XAMPP: CREATE DATABASE findme_db; USE findme_db; then run this file
 --   * Aiven: already connected to defaultdb (the free user cannot CREATE DATABASE)
 -- Tables are IF NOT EXISTS, so re-running is safe.
 

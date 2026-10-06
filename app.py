@@ -397,6 +397,21 @@ def register():
 
         password_hash = bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
 
+        # Column length checks: friendly message instead of a MySQL
+        # "Data too long" crash (500).
+        if len(full_name) > 150:
+            flash('Full name is too long (maximum 150 characters).', 'danger')
+            cursor2.close()
+            return render_template('register.html', faculties=faculties, courses=courses)
+        if len(phone) > 20:
+            flash('Phone number is too long (maximum 20 characters).', 'danger')
+            cursor2.close()
+            return render_template('register.html', faculties=faculties, courses=courses)
+        if len(student_staff_id) > 50:
+            flash('Student/Staff ID is too long (maximum 50 characters).', 'danger')
+            cursor2.close()
+            return render_template('register.html', faculties=faculties, courses=courses)
+
         cursor2.execute(
             'INSERT INTO users (full_name, email, phone, student_staff_id, password_hash, role_id, faculty_id, course_id) VALUES (%s, %s, %s, %s, %s, %s, %s, %s)',
             (full_name, email, phone, student_staff_id, password_hash, role_id, faculty_id or None, course_id or None)
@@ -506,6 +521,19 @@ def settings():
         full_name = request.form.get('full_name', '').strip()
         phone = request.form.get('phone', '').strip()
         student_staff_id = request.form.get('student_staff_id', '').strip()
+
+        # Column length checks: friendly message instead of a MySQL
+        # "Data too long" crash (500). Run before the avatar upload so a
+        # rejected form never leaves an orphaned image behind.
+        if len(full_name) > 150:
+            flash('Full name is too long (maximum 150 characters).', 'danger')
+            return redirect(url_for('settings'))
+        if len(phone) > 20:
+            flash('Phone number is too long (maximum 20 characters).', 'danger')
+            return redirect(url_for('settings'))
+        if len(student_staff_id) > 50:
+            flash('Student/Staff ID is too long (maximum 50 characters).', 'danger')
+            return redirect(url_for('settings'))
 
         profile_image = request.files.get('profile_image')
         image_path = user[11] if user else None
