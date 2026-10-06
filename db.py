@@ -37,6 +37,7 @@ def get_db():
                     ssl=ssl_arg,
                     read_timeout=30,
                     write_timeout=30,
+                    init_command="SET SESSION sql_mode=(SELECT REPLACE(@@sql_mode,'ANSI_QUOTES',''))",
                 )
                 break
             except Exception as exc:
