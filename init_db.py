@@ -63,12 +63,12 @@ def run_sql_file(cursor, file_path):
     """Run a .sql file statement by statement."""
     with open(file_path, 'r', encoding='utf-8') as f:
         content = f.read()
-    statements = [s.strip() for s in content.split(';') if s.strip() and not s.strip().startswith('--')]
+    content = '\n'.join(l for l in content.splitlines() if not l.strip().startswith('--'))
+    statements = [s.strip() for s in content.split(';') if s.strip()]
     for stmt in statements:
         try:
             cursor.execute(stmt)
         except pymysql.err.MySQLError as e:
-            # CREATE INDEX has no IF NOT EXISTS in MySQL - safe to skip on re-runs
             if 'Duplicate key name' in str(e):
                 continue
             raise
