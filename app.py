@@ -1,39 +1,63 @@
 import os
+import sys
 import secrets
+import logging
 import threading
 from datetime import datetime, timedelta
 from functools import wraps
 
-# Hosting-friendly: use PyMySQL as MySQLdb before flask_mysqldb loads
+# Hosting-friendly: use PyMySQL as MySQLdb
 try:
     import pymysql
     pymysql.install_as_MySQLdb()
 except ImportError:
     pass
 
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(levelname)s - %(message)s',
+    stream=sys.stdout,  # log to stdout only (hosting platforms capture stdout)
+)
+logger = logging.getLogger('findme')
+
 import bcrypt
 from flask import (
     Flask, render_template, request, redirect, url_for,
     session, flash, jsonify, send_from_directory, abort
 )
-from flask_mysqldb import MySQL
+from flask_wtf.csrf import CSRFProtect, CSRFError
+from flask_limiter import Limiter
+from flask_limiter.util import get_remote_address as remote_address
 from werkzeug.utils import secure_filename
+from werkzeug.middleware.proxy_fix import ProxyFix
 from PIL import Image
 
-from config import Config
+from config import Config, is_production
+from db import get_db, close_db
+from storage import cloudinary_configured, upload_processed_image
 
 app = Flask(__name__)
 app.config.from_object(Config)
 
-mysql = MySQL(app)
+# Trust Render's proxy so request.remote_addr / scheme are correct (X-Forwarded-*)
+app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1, x_host=1)
+
+app.teardown_appcontext(close_db)
+
+# CSRF protection for every POST form (csrf_token is injected into templates)
+csrf = CSRFProtect(app)
+
+# Rate limiting (in-memory) - only where specified below, no global defaults
+limiter = Limiter(key_func=remote_address, app=app, storage_uri='memory://')
 
 ALLOWED_EXTENSIONS = {'jpg', 'jpeg', 'png', 'webp'}
 
-os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
+# Local upload folders always exist so the disk fallback never breaks
+for _sub in ('lost', 'found', 'avatars'):
+    os.makedirs(os.path.join(app.config['UPLOAD_FOLDER'], _sub), exist_ok=True)
 
 
-def get_db():
-    return mysql.connection
+# get_db is imported from db module
 
 
 def allowed_file(filename):
@@ -48,26 +72,75 @@ def _run_matcher_async(item_type, item_id):
             from ai.matcher import find_potential_matches
             find_potential_matches(item_type, item_id, db)
         except Exception:
-            pass
+            logger.exception(
+                'Background AI matching failed for %s item %s', item_type, item_id
+            )
+
+
+def _start_matcher(item_type, item_id, db):
+    """Run AI matching in a background thread.
+
+    If the thread cannot be started (free hosting may restrict resources),
+    fall back to running the matcher synchronously inside this request.
+    """
+    try:
+        threading.Thread(
+            target=_run_matcher_async, args=(item_type, item_id), daemon=True
+        ).start()
+    except Exception:
+        logger.exception(
+            'Could not start background matcher for %s item %s; running synchronously',
+            item_type, item_id,
+        )
+        try:
+            from ai.matcher import find_potential_matches
+            find_potential_matches(item_type, item_id, db)
+        except Exception:
+            logger.exception(
+                'Synchronous AI matching failed for %s item %s', item_type, item_id
+            )
 
 
 def save_image(file, folder=''):
-    ext = file.filename.rsplit('.', 1)[1].lower()
-    filename = secrets.token_hex(16) + '.' + ext
-    subfolder = os.path.join(app.config['UPLOAD_FOLDER'], folder)
-    os.makedirs(subfolder, exist_ok=True)
-    filepath = os.path.join(subfolder, filename)
+    """Process an uploaded image and store it.
 
-    img = Image.open(file)
-    img.thumbnail((1200, 1200))
+    Cloudinary (production): Pillow processes exactly as always
+    (thumbnail 1200, RGB, optimize, quality 85), the JPG bytes are uploaded
+    with public_id "<folder>/<hex>" and the same style path string as local
+    ("lost/<hex>.jpg") is returned - so DB values and templates never change.
 
-    if img.mode in ('RGBA', 'P'):
-        img = img.convert('RGB')
+    Local fallback (development, no Cloudinary env vars): identical
+    local-disk behaviour to before (static/uploads/<folder>/<hex>.<ext>).
 
-    img.save(filepath, optimize=True, quality=85)
+    Returns the stored path string, or None on failure (a failed upload
+    never crashes a report submission).
+    """
+    try:
+        img = Image.open(file)
+        img.thumbnail((1200, 1200))
 
-    path = os.path.join(folder, filename) if folder else filename
-    return path.replace('\\', '/')
+        if img.mode in ('RGBA', 'P'):
+            img = img.convert('RGB')
+
+        if cloudinary_configured(app.config):
+            token = secrets.token_hex(16)
+            public_id = f'{folder}/{token}' if folder else token
+            upload_processed_image(img, public_id, app.config)
+            return f'{public_id}.jpg'
+
+        # Local disk fallback - unchanged development behaviour
+        ext = file.filename.rsplit('.', 1)[1].lower()
+        filename = secrets.token_hex(16) + '.' + ext
+        subfolder = os.path.join(app.config['UPLOAD_FOLDER'], folder)
+        os.makedirs(subfolder, exist_ok=True)
+        img.save(os.path.join(subfolder, filename), optimize=True, quality=85)
+
+        path = os.path.join(folder, filename) if folder else filename
+        return path.replace('\\', '/')
+    except Exception:
+        logger.exception('Image upload failed (folder=%s)', folder)
+        flash('Sorry, your image could not be saved. Please try again.', 'danger')
+        return None
 
 
 def log_activity(user_id, action, description, entity_type=None, entity_id=None):
@@ -226,7 +299,14 @@ def health():
     return jsonify({'status': 'ok', 'service': 'FindMe'}), 200
 
 
+@app.route('/healthz')
+def healthz():
+    """Liveness probe for Render - returns 200 without touching the database."""
+    return 'ok', 200
+
+
 @app.route('/login', methods=['GET', 'POST'])
+@limiter.limit('10/minute', methods=['POST'])
 def login():
     if request.method == 'POST':
         email = request.form.get('email', '').strip()
@@ -268,6 +348,7 @@ def login():
 
 
 @app.route('/register', methods=['GET', 'POST'])
+@limiter.limit('5/minute', methods=['POST'])
 def register():
     db = get_db()
     cursor = db.cursor()
@@ -333,6 +414,7 @@ def register():
 
 
 @app.route('/forgot-password', methods=['GET', 'POST'])
+@limiter.limit('5/minute', methods=['POST'])
 def forgot_password():
     if request.method == 'POST':
         email = request.form.get('email', '').strip()
@@ -440,7 +522,9 @@ def settings():
             if size > 5 * 1024 * 1024:
                 flash('Image must be under 5 MB.', 'danger')
                 return redirect(url_for('settings'))
-            image_path = save_image(profile_image, 'avatars')
+            uploaded = save_image(profile_image, 'avatars')
+            if uploaded:
+                image_path = uploaded  # keep the previous avatar if upload failed
 
         cursor.execute(
             'UPDATE users SET full_name = %s, phone = %s, student_staff_id = %s, profile_image = %s WHERE id = %s',
@@ -623,7 +707,7 @@ def report_lost():
         cursor.close()
 
 
-        threading.Thread(target=_run_matcher_async, args=('lost', item_id), daemon=True).start()
+        _start_matcher('lost', item_id, db)
 
         flash('Lost item reported successfully!', 'success')
         return redirect(url_for('my_reports'))
@@ -706,7 +790,7 @@ def report_found():
         cursor.close()
 
 
-        threading.Thread(target=_run_matcher_async, args=('found', item_id), daemon=True).start()
+        _start_matcher('found', item_id, db)
 
         flash('Found item reported successfully!', 'success')
         return redirect(url_for('my_reports'))
@@ -1403,6 +1487,19 @@ def admin_matches():
     return render_template('admin/ai_matches.html', matches=items, status_filter=status_filter, page=page, total_pages=total_pages, total=total)
 
 
+@app.route('/admin/rerun-matches', methods=['POST'])
+@login_required
+@admin_required
+def admin_rerun_matches():
+    """Delete and regenerate ALL matches (admin-only, confirm dialog in UI)."""
+    from ai.matcher import rerun_all_matches
+    db = get_db()
+    count = rerun_all_matches(db)
+    log_activity(session['user_id'], 'rerun_matches', f'Regenerated all matches ({count} pending)')
+    flash(f'AI matching re-run complete: {count} match(es) created as pending.', 'success')
+    return redirect(url_for('admin_matches'))
+
+
 @app.route('/admin/match/<int:match_id>/approve', methods=['POST'])
 @login_required
 @admin_required
@@ -1745,6 +1842,18 @@ def admin_reset_data():
 
 @app.route('/uploads/<path:filename>')
 def serve_image(filename):
+    """Serve an uploaded image.
+
+    DB values keep the original style ("lost/<hex>.jpg"). When Cloudinary is
+    configured, this redirects to the Cloudinary delivery URL; otherwise the
+    file is served from the local uploads folder (XAMPP development).
+    """
+    cloud_name = app.config.get('CLOUDINARY_CLOUD_NAME')
+    if cloud_name and cloudinary_configured(app.config):
+        return redirect(
+            f'https://res.cloudinary.com/{cloud_name}/image/upload/{filename}',
+            code=302,
+        )
     return send_from_directory(app.config['UPLOAD_FOLDER'], filename)
 
 
@@ -1752,6 +1861,13 @@ def serve_image(filename):
 def request_entity_too_large(error):
     flash('File too large. Maximum size is 16MB.', 'danger')
     return redirect(request.referrer or url_for('dashboard'))
+
+
+@app.errorhandler(CSRFError)
+def handle_csrf_error(error):
+    """Friendly CSRF failure: never crash, just ask the user to retry."""
+    flash('Your session has expired for security reasons. Please try again.', 'warning')
+    return redirect(request.referrer or url_for('index'))
 
 
 @app.context_processor
@@ -1764,7 +1880,8 @@ def inject_now():
 # ==================== RUN ====================
 
 if __name__ == '__main__':
-    # Hosting platforms set PORT env (Render/Railway/Heroku); default 5000
+    # Config is validated at import time (missing production SECRET_KEY raises
+    # a RuntimeError), so nothing to check here.
     port = int(os.environ.get('PORT', 5000))
-    debug = os.environ.get('FLASK_ENV') != 'production'
+    debug = not is_production()  # debug is always OFF in production
     app.run(host='0.0.0.0', port=port, debug=debug)

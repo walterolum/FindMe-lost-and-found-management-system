@@ -89,11 +89,13 @@
     {% if match[6] == 'pending' and session.get('role_name') == 'Administrator' %}
     <div class="match-actions" style="justify-content:center; margin-top:var(--space-6);">
         <form method="POST" action="{{ url_for('admin_approve_match', match_id=match[0]) }}">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
             <button type="submit" class="btn btn-success btn-lg" onclick="return confirm('Approve this match?')">
                 <i class="fas fa-check"></i> Approve Match
             </button>
         </form>
         <form method="POST" action="{{ url_for('admin_reject_match', match_id=match[0]) }}">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
             <button type="submit" class="btn btn-danger btn-lg" onclick="return confirm('Reject this match?')">
                 <i class="fas fa-xmark"></i> Reject Match
             </button>

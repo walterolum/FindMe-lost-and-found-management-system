@@ -12,6 +12,10 @@
         <a href="{{ url_for('admin_matches', status='approved') }}" class="btn btn-sm {% if status_filter == 'approved' %}btn-success{% else %}btn-outline{% endif %}">Approved</a>
         <a href="{{ url_for('admin_matches', status='rejected') }}" class="btn btn-sm {% if status_filter == 'rejected' %}btn-danger{% else %}btn-outline{% endif %}">Rejected</a>
         <a href="{{ url_for('admin_matches', status='all') }}" class="btn btn-sm {% if status_filter == 'all' %}btn-secondary{% else %}btn-outline{% endif %}">All</a>
+        <form method="POST" action="{{ url_for('admin_rerun_matches') }}" style="margin-left: auto;" onsubmit="return confirm('Re-run AI matching? ALL existing matches will be deleted and regenerated as pending.');">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <button type="submit" class="btn btn-sm btn-outline"><i class="fas fa-sync-alt"></i> Re-run AI Matching</button>
+        </form>
     </div>
 
     {% if matches %}
@@ -77,11 +81,13 @@
         {% if m[6] == 'pending' %}
         <div class="match-actions">
             <form method="POST" action="{{ url_for('admin_approve_match', match_id=m[0]) }}">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                 <button type="submit" class="btn btn-success" onclick="return confirm('Approve this match?')">
                     <i class="fas fa-check"></i> Approve
                 </button>
             </form>
             <form method="POST" action="{{ url_for('admin_reject_match', match_id=m[0]) }}">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                 <button type="submit" class="btn btn-danger" onclick="return confirm('Reject this match?')">
                     <i class="fas fa-xmark"></i> Reject
                 </button>

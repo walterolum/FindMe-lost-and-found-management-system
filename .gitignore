@@ -1,12 +1,36 @@
-__pycache__/
-*.pyc
-*.pyo
+# Environment variables / secrets
 .env
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Virtual environments
 venv/
-.venv/
-output/
+env/
+ENV/
+.venv
+
+# Uploaded files (runtime data - keep the folder structure via .gitkeep;
+# production stores images on Cloudinary instead)
 static/uploads/*
-!static/uploads/.gitkeep
+!static/uploads/*/
+static/uploads/*/*
+!static/uploads/*/.gitkeep
+
+# Generated outputs / office docs
+output/
 *.pptx
 *.docx
-~$*
+
+# Database dumps named backup*
+backup*.sql
+backup*.sql.gz
+
+# OS / IDE
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+generate_*.py

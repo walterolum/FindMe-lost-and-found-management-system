@@ -1,14 +1,17 @@
-CREATE DATABASE IF NOT EXISTS findme_db CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
-USE findme_db;
+-- FindMe database schema
+-- Imports into WHATEVER database is selected by the connection:
+--   * local XAMPP: CREATE DATABASE findme_db; USE findme_db; then run this file
+--   * Aiven: already connected to defaultdb (the free user cannot CREATE DATABASE)
+-- Tables are IF NOT EXISTS, so re-running is safe.
 
-CREATE TABLE roles (
+CREATE TABLE IF NOT EXISTS roles (
     id INT AUTO_INCREMENT PRIMARY KEY,
     name VARCHAR(50) NOT NULL UNIQUE,
     description VARCHAR(255),
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
-CREATE TABLE faculties (
+CREATE TABLE IF NOT EXISTS faculties (
     id INT AUTO_INCREMENT PRIMARY KEY,
     name VARCHAR(100) NOT NULL,
     description VARCHAR(255),
@@ -17,7 +20,7 @@ CREATE TABLE faculties (
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 );
 
-CREATE TABLE courses (
+CREATE TABLE IF NOT EXISTS courses (
     id INT AUTO_INCREMENT PRIMARY KEY,
     name VARCHAR(150) NOT NULL,
     code VARCHAR(20),
@@ -28,7 +31,7 @@ CREATE TABLE courses (
     FOREIGN KEY (faculty_id) REFERENCES faculties(id)
 );
 
-CREATE TABLE users (
+CREATE TABLE IF NOT EXISTS users (
     id INT AUTO_INCREMENT PRIMARY KEY,
     full_name VARCHAR(150) NOT NULL,
     email VARCHAR(150) NOT NULL UNIQUE,
@@ -48,7 +51,7 @@ CREATE TABLE users (
     FOREIGN KEY (course_id) REFERENCES courses(id)
 );
 
-CREATE TABLE categories (
+CREATE TABLE IF NOT EXISTS categories (
     id INT AUTO_INCREMENT PRIMARY KEY,
     name VARCHAR(100) NOT NULL,
     description VARCHAR(255),
@@ -57,7 +60,7 @@ CREATE TABLE categories (
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 );
 
-CREATE TABLE locations (
+CREATE TABLE IF NOT EXISTS locations (
     id INT AUTO_INCREMENT PRIMARY KEY,
     name VARCHAR(150) NOT NULL,
     description VARCHAR(255),
@@ -66,7 +69,7 @@ CREATE TABLE locations (
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 );
 
-CREATE TABLE lost_items (
+CREATE TABLE IF NOT EXISTS lost_items (
     id INT AUTO_INCREMENT PRIMARY KEY,
     reference VARCHAR(30) NOT NULL UNIQUE,
     reporter_id INT NOT NULL,
@@ -85,7 +88,7 @@ CREATE TABLE lost_items (
     location_id INT,
     location_detail TEXT,
     additional_details TEXT,
-    image_path VARCHAR(300),
+    image_path VARCHAR(512),
     shape_data TEXT,
     status ENUM('reported','under_review','potential_match','match_pending_approval','match_approved','match_rejected','owner_verification_pending','owner_verified','recovered','closed','archived') DEFAULT 'reported',
     verified_by INT,
@@ -98,7 +101,7 @@ CREATE TABLE lost_items (
     FOREIGN KEY (verified_by) REFERENCES users(id)
 );
 
-CREATE TABLE found_items (
+CREATE TABLE IF NOT EXISTS found_items (
     id INT AUTO_INCREMENT PRIMARY KEY,
     reference VARCHAR(30) NOT NULL UNIQUE,
     finder_id INT NOT NULL,
@@ -118,7 +121,7 @@ CREATE TABLE found_items (
     location_detail TEXT,
     additional_details TEXT,
     current_location VARCHAR(255),
-    image_path VARCHAR(300),
+    image_path VARCHAR(512),
     shape_data TEXT,
     status ENUM('reported','under_review','potential_match','match_pending_approval','match_approved','match_rejected','owner_verification_pending','owner_verified','recovered','closed','archived') DEFAULT 'reported',
     verified_by INT,
@@ -131,15 +134,15 @@ CREATE TABLE found_items (
     FOREIGN KEY (verified_by) REFERENCES users(id)
 );
 
-CREATE TABLE item_images (
+CREATE TABLE IF NOT EXISTS item_images (
     id INT AUTO_INCREMENT PRIMARY KEY,
     item_id INT NOT NULL,
     item_type ENUM('lost','found') NOT NULL,
-    image_path VARCHAR(300) NOT NULL,
+    image_path VARCHAR(512) NOT NULL,
     uploaded_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
-CREATE TABLE matches (
+CREATE TABLE IF NOT EXISTS matches (
     id INT AUTO_INCREMENT PRIMARY KEY,
     lost_item_id INT NOT NULL,
     found_item_id INT NOT NULL,
@@ -157,7 +160,7 @@ CREATE TABLE matches (
     FOREIGN KEY (reviewed_by) REFERENCES users(id)
 );
 
-CREATE TABLE notifications (
+CREATE TABLE IF NOT EXISTS notifications (
     id INT AUTO_INCREMENT PRIMARY KEY,
     user_id INT NOT NULL,
     title VARCHAR(200) NOT NULL,
@@ -170,7 +173,7 @@ CREATE TABLE notifications (
     FOREIGN KEY (user_id) REFERENCES users(id)
 );
 
-CREATE TABLE verification_requests (
+CREATE TABLE IF NOT EXISTS verification_requests (
     id INT AUTO_INCREMENT PRIMARY KEY,
     match_id INT NOT NULL,
     requester_id INT NOT NULL,
@@ -192,7 +195,7 @@ CREATE TABLE verification_requests (
     FOREIGN KEY (reviewed_by) REFERENCES users(id)
 );
 
-CREATE TABLE recoveries (
+CREATE TABLE IF NOT EXISTS recoveries (
     id INT AUTO_INCREMENT PRIMARY KEY,
     match_id INT NOT NULL,
     recovered_by_id INT NOT NULL,
@@ -206,7 +209,7 @@ CREATE TABLE recoveries (
     FOREIGN KEY (recovered_by_id) REFERENCES users(id)
 );
 
-CREATE TABLE activity_logs (
+CREATE TABLE IF NOT EXISTS activity_logs (
     id INT AUTO_INCREMENT PRIMARY KEY,
     user_id INT,
     action VARCHAR(100) NOT NULL,

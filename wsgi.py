@@ -14,6 +14,9 @@ except ImportError:
 
 from app import app as application
 
+app = application  # for gunicorn wsgi:app if needed (backward compat)
+
+
 # WhiteNoise: serve static files efficiently in production (Render/Railway/Heroku)
 try:
     from whitenoise import WhiteNoise

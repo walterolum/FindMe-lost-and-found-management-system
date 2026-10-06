@@ -33,6 +33,7 @@
                     <td>
                         <div class="action-btns">
                             <form method="POST" action="{{ url_for('admin_toggle_user', user_id=user[0]) }}">
+                                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                                 <button type="submit" class="btn btn-sm {{ 'btn-warning' if user[5] else 'btn-success' }}">
                                     {{ 'Deactivate' if user[5] else 'Activate' }}
                                 </button>
@@ -41,6 +42,7 @@
                             <span class="protected-badge" title="Admin accounts cannot be deleted"><i class="fas fa-shield-halved"></i> Protected</span>
                             {% else %}
                             <form method="POST" action="{{ url_for('admin_delete_user', user_id=user[0]) }}" onsubmit="return confirm('Permanently delete user &quot;{{ user[1] }}&quot; and ALL their data? This cannot be undone.');">
+                                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                                 <button type="submit" class="btn btn-sm btn-danger">
                                     <i class="fas fa-trash"></i> Delete
                                 </button>

@@ -9,6 +9,7 @@
 
     <div class="dash-card">
         <form method="POST" class="form-grid-2" style="gap: var(--space-4); align-items: end;">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
             <div class="form-group">
                 <label>Category Name</label>
                 <input type="text" name="name" placeholder="e.g. Electronics" required>
@@ -32,6 +33,7 @@
                     <td><span class="badge badge-{{ 'active' if c[3] else 'inactive' }}">{{ 'Active' if c[3] else 'Inactive' }}</span></td>
                     <td>
                         <form method="POST" action="{{ url_for('admin_toggle_category', cat_id=c[0]) }}" style="display:inline;">
+                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                             <button type="submit" class="btn btn-sm {{ 'btn-warning' if c[3] else 'btn-success' }}">{{ 'Deactivate' if c[3] else 'Activate' }}</button>
                         </form>
                     </td>
