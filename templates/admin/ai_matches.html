@@ -5,6 +5,10 @@
     <div class="page-header">
         <h1><i class="fas fa-brain"></i> AI Match Review</h1>
         <p class="page-subtitle">Review and approve potential matches between lost and found items</p>
+        <p class="page-subtitle match-live-note">
+            <i class="fas fa-bolt"></i>
+            Matching runs automatically the moment a lost or found item is reported.
+        </p>
     </div>
 
     <div class="filter-bar">
@@ -12,7 +16,7 @@
         <a href="{{ url_for('admin_matches', status='approved') }}" class="btn btn-sm {% if status_filter == 'approved' %}btn-success{% else %}btn-outline{% endif %}">Approved</a>
         <a href="{{ url_for('admin_matches', status='rejected') }}" class="btn btn-sm {% if status_filter == 'rejected' %}btn-danger{% else %}btn-outline{% endif %}">Rejected</a>
         <a href="{{ url_for('admin_matches', status='all') }}" class="btn btn-sm {% if status_filter == 'all' %}btn-secondary{% else %}btn-outline{% endif %}">All</a>
-        <form method="POST" action="{{ url_for('admin_rerun_matches') }}" style="margin-left: auto;" onsubmit="return confirm('Re-run AI matching? ALL existing matches will be deleted and regenerated as pending.');">
+        <form method="POST" action="{{ url_for('admin_rerun_matches') }}" class="filter-rerun" onsubmit="return confirm('Re-run AI matching? Pending matches will be rebuilt. Approved and rejected decisions are kept.');">
             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
             <button type="submit" class="btn btn-sm btn-outline"><i class="fas fa-sync-alt"></i> Re-run AI Matching</button>
         </form>

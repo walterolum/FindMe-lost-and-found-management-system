@@ -2,7 +2,9 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <meta name="theme-color" content="#2563eb">
+    <meta name="color-scheme" content="light dark">
     <title>{% block title %}FindMe{% endblock %} - Cavendish University Uganda</title>
     <link rel="icon" type="image/svg+xml" href="{{ url_for('static', filename='img/favicon.svg') }}">
     <link rel="icon" type="image/png" sizes="32x32" href="{{ url_for('static', filename='img/favicon-32.png') }}">
@@ -10,7 +12,7 @@
     <link rel="preconnect" href="https://cdnjs.cloudflare.com" crossorigin>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}?v=20261031b">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" media="print" onload="this.media='all'">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" media="print" onload="this.media='all'">
     <noscript><link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css"><link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet"></noscript>
@@ -23,6 +25,7 @@
     </script>
 </head>
 <body>
+    <a href="#mainContent" class="skip-link">Skip to main content</a>
     {% if session.user_id %}
     {# â”€â”€ Sidebar for authenticated users â”€â”€ #}
     <aside class="sidebar" id="sidebar">
@@ -93,10 +96,6 @@
     <div class="sidebar-overlay" id="sidebarOverlay"></div>
     {% endif %}
 
-    <button class="sidebar-toggle" id="sidebarToggle" style="display:none;">
-        <i class="fas fa-bars"></i>
-    </button>
-
     {% if not session.user_id %}
     {# â”€â”€ Top navbar for public pages â”€â”€ #}
     <nav class="navbar" id="publicNavbar">
@@ -104,7 +103,7 @@
             <a href="{{ url_for('index') }}" class="nav-brand">
                 <i class="fas fa-magnifying-glass"></i> FindMe
             </a>
-            <button class="nav-toggle" id="navToggle"><i class="fas fa-bars"></i></button>
+            <button class="nav-toggle" id="navToggle" aria-label="Open menu" aria-controls="navLinks" aria-expanded="false"><i class="fas fa-bars"></i></button>
             <ul class="nav-links" id="navLinks">
                 <li><a href="{{ url_for('index') }}">Home</a></li>
                 <li><a href="{{ url_for('about') }}">About</a></li>
@@ -115,21 +114,24 @@
         </div>
     </nav>
     {% else %}
-    {# â”€â”€ Minimal top bar for authenticated users â”€â”€ #}
-    <nav class="navbar" id="publicNavbar" style="margin-left:var(--sidebar-width);transition:margin-left var(--duration-slow) var(--ease-out);">
+    {# ── Minimal top bar for authenticated users ── #}
+    <nav class="navbar navbar-auth" id="publicNavbar">
         <div class="nav-container">
-            <div style="display:flex;align-items:center;gap:var(--space-3);">
-                <button class="sidebar-toggle" id="sidebarToggle" style="display:none;position:static;">
+            <div class="nav-left">
+                <button type="button" class="sidebar-toggle" id="sidebarToggle"
+                        aria-label="Open navigation menu" aria-controls="sidebar" aria-expanded="false">
                     <i class="fas fa-bars"></i>
                 </button>
-                <span style="font-weight:var(--font-semibold);color:var(--text-primary);">{% block page_title %}{% endblock %}</span>
+                <span class="nav-page-title">{% block page_title %}{% endblock %}</span>
             </div>
-            <div style="display:flex;align-items:center;gap:var(--space-3);">
-                <button type="button" class="theme-toggle" title="Toggle theme"><i class="fas fa-moon"></i></button>
-                <a href="{{ url_for('notifications') }}" style="color:var(--text-muted);font-size:var(--text-lg);position:relative;">
+            <div class="nav-actions">
+                <button type="button" class="theme-toggle" title="Toggle theme" aria-label="Toggle color theme">
+                    <i class="fas fa-moon"></i>
+                </button>
+                <a href="{{ url_for('notifications') }}" class="nav-bell" aria-label="Notifications">
                     <i class="fas fa-bell"></i>
                     {% if unread_count and unread_count > 0 %}
-                    <span style="position:absolute;top:-4px;right:-6px;background:var(--danger);color:white;font-size:9px;font-weight:700;padding:1px 5px;border-radius:99px;">{{ unread_count }}</span>
+                    <span class="nav-bell-badge">{{ unread_count }}</span>
                     {% endif %}
                 </a>
             </div>
@@ -137,7 +139,7 @@
     </nav>
     {% endif %}
 
-    <main class="{% if session.user_id %}layout-with-sidebar{% endif %}">
+    <main id="mainContent" class="{% if session.user_id %}layout-with-sidebar{% endif %}">
         {% if session.user_id %}
         <div class="main-area">
         {% else %}
@@ -145,13 +147,15 @@
         {% endif %}
             {% with messages = get_flashed_messages(with_categories=true) %}
                 {% if messages %}
+                    <div class="flash-stack">
                     {% for category, message in messages %}
-                        <div class="flash-message flash-{{ category }}" style="max-width:1560px;margin:0 auto var(--space-3);">
+                        <div class="flash-message flash-{{ category }}">
                             <i class="fas fa-{{ 'check-circle' if category == 'success' else 'exclamation-circle' if category == 'danger' else 'exclamation-triangle' if category == 'warning' else 'info-circle' }}"></i>
-                            {{ message }}
-                            <button class="flash-close" onclick="this.parentElement.remove()">&times;</button>
+                            <span class="flash-text">{{ message }}</span>
+                            <button type="button" class="flash-close" aria-label="Dismiss message" onclick="this.parentElement.remove()">&times;</button>
                         </div>
                     {% endfor %}
+                    </div>
                 {% endif %}
             {% endwith %}
 
@@ -167,7 +171,7 @@
     </footer>
     {% endif %}
 
-    <script src="{{ url_for('static', filename='js/main.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/main.js') }}?v=20261031b"></script>
     {% block scripts %}{% endblock %}
 </body>
 </html>

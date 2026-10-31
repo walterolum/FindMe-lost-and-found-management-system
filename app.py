@@ -1,5 +1,6 @@
 import os
 import sys
+import time
 import secrets
 import logging
 import threading
@@ -65,40 +66,78 @@ def allowed_file(filename):
            filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
 
 
-def _run_matcher_async(item_type, item_id):
-    with app.app_context():
-        try:
-            db = get_db()
-            from ai.matcher import find_potential_matches
-            find_potential_matches(item_type, item_id, db)
-        except Exception:
-            logger.exception(
-                'Background AI matching failed for %s item %s', item_type, item_id
-            )
+# Throttle for the self-healing backfill (matches/admin pages).
+_backfill_lock = threading.Lock()
+_last_backfill_at = 0.0
+
+
+def _run_matcher(item_type, item_id, db=None):
+    """Match one report immediately and return the new matches.
+
+    Matching used to run in a daemon thread.  Free hosts may stop background
+    threads as soon as the response is sent, which left reports unmatched.
+    The engine is pure Python and scores at most 200 pairs, so running it
+    inline is fast and guarantees the match exists before the user is
+    redirected.
+    """
+    started = time.monotonic()
+    try:
+        from ai.matcher import find_potential_matches
+
+        if db is not None:
+            matches = find_potential_matches(item_type, item_id, db)
+        else:
+            with app.app_context():
+                matches = find_potential_matches(item_type, item_id, get_db())
+
+        logger.info(
+            'AI matching for %s item %s finished in %.0f ms (%d new match(es))',
+            item_type, item_id, (time.monotonic() - started) * 1000, len(matches),
+        )
+        return matches
+    except Exception:
+        # A matcher problem must never lose or roll back the user's report.
+        logger.exception('AI matching failed for %s item %s', item_type, item_id)
+        return []
 
 
 def _start_matcher(item_type, item_id, db):
-    """Run AI matching in a background thread.
+    """Backwards-compatible entry point used by the report routes."""
+    return _run_matcher(item_type, item_id, db)
 
-    If the thread cannot be started (free hosting may restrict resources),
-    fall back to running the matcher synchronously inside this request.
-    """
+
+def _maybe_backfill_matches(db, min_interval=45):
+    """Repair unmatched recent reports, at most once per interval."""
+    global _last_backfill_at
+    now_ts = time.monotonic()
+    with _backfill_lock:
+        if now_ts - _last_backfill_at < min_interval:
+            return 0
+        _last_backfill_at = now_ts
+
     try:
-        threading.Thread(
-            target=_run_matcher_async, args=(item_type, item_id), daemon=True
-        ).start()
+        from ai.matcher import backfill_matches
+        created = backfill_matches(db)
+        if created:
+            logger.info('AI backfill created %d new match(es)', created)
+        return created
     except Exception:
-        logger.exception(
-            'Could not start background matcher for %s item %s; running synchronously',
-            item_type, item_id,
+        logger.exception('AI match backfill failed')
+        return 0
+
+
+def _refresh_unread_count(db):
+    """Keep the navbar bell badge in sync right after a report creates matches."""
+    try:
+        cursor = db.cursor()
+        cursor.execute(
+            'SELECT COUNT(*) FROM notifications WHERE user_id = %s AND is_read = FALSE',
+            (session['user_id'],)
         )
-        try:
-            from ai.matcher import find_potential_matches
-            find_potential_matches(item_type, item_id, db)
-        except Exception:
-            logger.exception(
-                'Synchronous AI matching failed for %s item %s', item_type, item_id
-            )
+        session['_unread_count'] = cursor.fetchone()[0]
+        cursor.close()
+    except Exception:
+        logger.exception('Could not refresh unread notification count')
 
 
 def save_image(file, folder=''):
@@ -587,6 +626,7 @@ def settings():
 @login_required
 def dashboard():
     db = get_db()
+    _maybe_backfill_matches(db)
     cursor = db.cursor()
     user_id = session['user_id']
 
@@ -735,9 +775,23 @@ def report_lost():
         cursor.close()
 
 
-        _start_matcher('lost', item_id, db)
+        # Match immediately: the report exists in the DB, so the engine can
+        # scan every open found report before we redirect the user.
+        new_matches = _start_matcher('lost', item_id, db)
+        _refresh_unread_count(db)
 
-        flash('Lost item reported successfully!', 'success')
+        if new_matches:
+            flash(
+                f'Lost item reported successfully! '
+                f'The AI found {len(new_matches)} potential match(es).',
+                'success'
+            )
+        else:
+            flash(
+                'Lost item reported successfully! The AI is scanning and will '
+                'notify you the moment a found item matches.',
+                'success'
+            )
         return redirect(url_for('my_reports'))
 
     db = get_db()
@@ -818,9 +872,22 @@ def report_found():
         cursor.close()
 
 
-        _start_matcher('found', item_id, db)
+        # Match immediately against every open lost report.
+        new_matches = _start_matcher('found', item_id, db)
+        _refresh_unread_count(db)
 
-        flash('Found item reported successfully!', 'success')
+        if new_matches:
+            flash(
+                f'Found item reported successfully! '
+                f'The AI matched it with {len(new_matches)} lost report(s).',
+                'success'
+            )
+        else:
+            flash(
+                'Found item reported successfully! The AI is scanning and will '
+                'notify you the moment a lost report matches.',
+                'success'
+            )
         return redirect(url_for('my_reports'))
 
     db = get_db()
@@ -996,6 +1063,9 @@ def item_detail(item_type, item_id):
 @login_required
 def matches():
     db = get_db()
+    # Self-healing sweep: repair any recent report that never got matched
+    # (for example, one created while a worker was restarting).
+    _maybe_backfill_matches(db)
     cursor = db.cursor()
     user_id = session['user_id']
 
@@ -1483,6 +1553,7 @@ def admin_found_items():
 def admin_matches():
     page = request.args.get('page', 1, type=int)
     db = get_db()
+    _maybe_backfill_matches(db)
     cursor = db.cursor()
     status_filter = request.args.get('status', 'pending')
     all_statuses = ['pending', 'approved', 'rejected', 'uncertain']
