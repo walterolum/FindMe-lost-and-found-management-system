@@ -12,6 +12,7 @@ def init_database():
         port=Config.MYSQL_PORT,
         user=Config.MYSQL_USER,
         password=Config.MYSQL_PASSWORD,
+        ssl_ca=Config.MYSQL_SSL_CA,
         charset='utf8mb4'
     )
     cursor = conn.cursor()

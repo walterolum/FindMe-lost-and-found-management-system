@@ -3,7 +3,7 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from config import Config
 import pymysql
 
-conn = pymysql.connect(host=Config.MYSQL_HOST, port=Config.MYSQL_PORT, user=Config.MYSQL_USER, password=Config.MYSQL_PASSWORD, database=Config.MYSQL_DB, charset='utf8mb4')
+conn = pymysql.connect(host=Config.MYSQL_HOST, port=Config.MYSQL_PORT, user=Config.MYSQL_USER, password=Config.MYSQL_PASSWORD, ssl_ca=Config.MYSQL_SSL_CA, database=Config.MYSQL_DB, charset='utf8mb4')
 cursor = conn.cursor()
 
 cursor.execute('DESCRIBE users')

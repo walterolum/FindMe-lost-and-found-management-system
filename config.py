@@ -46,6 +46,10 @@ class Config:
     MYSQL_CHARSET = 'utf8mb4'
     MYSQL_COLLATION = 'utf8mb4_unicode_ci'
     MYSQL_CONNECT_TIMEOUT = 30
+        # SSL for hosted databases (Aiven). Skipped for local MySQL.
+    _ca_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'ca.pem')
+    MYSQL_SSL_CA = _ca_path if (os.path.exists(_ca_path) and MYSQL_HOST not in ('localhost', '127.0.0.1')) else None
+    MYSQL_CUSTOM_OPTIONS = {'ssl': {'ca': MYSQL_SSL_CA}} if MYSQL_SSL_CA else {}
     UPLOAD_FOLDER = os.path.join(BASE_DIR, 'static', 'uploads')
     MAX_CONTENT_LENGTH = 16 * 1024 * 1024
     ALLOWED_EXTENSIONS = {'jpg', 'jpeg', 'png', 'webp'}
