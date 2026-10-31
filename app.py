@@ -70,6 +70,109 @@ def allowed_file(filename):
 _backfill_lock = threading.Lock()
 _last_backfill_at = 0.0
 
+# Schema self-check for match review. Older databases (or a database created
+# from a pre-review schema) may lack the review columns / enum values, which
+# made "Approve" fail with a 500 only in production.
+_SCHEMA_LOCK = threading.Lock()
+_schema_ready = False
+
+_ITEM_STATUS_ENUM = (
+    "ENUM('reported','under_review','potential_match',"
+    "'match_pending_approval','match_approved','match_rejected',"
+    "'owner_verification_pending','owner_verified','recovered','closed',"
+    "'archived') DEFAULT 'reported'"
+)
+_NOTIFICATION_TYPE_ENUM = "ENUM('info','warning','success','match','recovery') DEFAULT 'info'"
+
+
+def _ensure_match_schema(db):
+    """Add missing review columns / enum values on older deployments.
+
+    Runs at most once per worker. Failures are logged and retried on the next
+    request; they must never break a page.
+    """
+    global _schema_ready
+    if _schema_ready:
+        return
+    with _SCHEMA_LOCK:
+        if _schema_ready:
+            return
+        cursor = None
+        try:
+            cursor = db.cursor()
+
+            cursor.execute(
+                "SELECT COLUMN_NAME FROM information_schema.COLUMNS "
+                "WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'matches'"
+            )
+            columns = {str(row[0]).lower() for row in cursor.fetchall()}
+            additions = {
+                'reviewed_by': 'INT NULL',
+                'reviewed_at': 'TIMESTAMP NULL',
+                'review_notes': 'TEXT NULL',
+            }
+            for column, ddl in additions.items():
+                if column not in columns:
+                    cursor.execute(f'ALTER TABLE matches ADD COLUMN {column} {ddl}')
+                    logger.info('Added missing matches.%s column', column)
+
+            for table in ('lost_items', 'found_items'):
+                cursor.execute(
+                    "SELECT COLUMN_TYPE FROM information_schema.COLUMNS "
+                    "WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = %s "
+                    "AND COLUMN_NAME = 'status'",
+                    (table,),
+                )
+                row = cursor.fetchone()
+                if row and 'match_approved' not in str(row[0]):
+                    cursor.execute(
+                        f'ALTER TABLE {table} MODIFY COLUMN status {_ITEM_STATUS_ENUM}'
+                    )
+                    logger.info('Widened %s.status enum for match approval', table)
+
+            cursor.execute(
+                "SELECT COLUMN_TYPE FROM information_schema.COLUMNS "
+                "WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'notifications' "
+                "AND COLUMN_NAME = 'type'"
+            )
+            row = cursor.fetchone()
+            if row and ('match' not in str(row[0]) or 'recovery' not in str(row[0])):
+                cursor.execute(
+                    f'ALTER TABLE notifications MODIFY COLUMN type {_NOTIFICATION_TYPE_ENUM}'
+                )
+                logger.info('Widened notifications.type enum')
+
+            # Notification inserts in the matcher are deliberately best-effort,
+            # so a missing related_* column can go unnoticed until approval.
+            cursor.execute(
+                "SELECT COLUMN_NAME FROM information_schema.COLUMNS "
+                "WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'notifications'"
+            )
+            columns = {str(row[0]).lower() for row in cursor.fetchall()}
+            notification_additions = {
+                'is_read': 'BOOLEAN DEFAULT FALSE',
+                'related_type': 'VARCHAR(50) NULL',
+                'related_id': 'INT NULL',
+            }
+            for column, ddl in notification_additions.items():
+                if column not in columns:
+                    cursor.execute(
+                        f'ALTER TABLE notifications ADD COLUMN {column} {ddl}'
+                    )
+                    logger.info('Added missing notifications.%s column', column)
+
+            db.commit()
+            _schema_ready = True
+        except Exception:
+            db.rollback()
+            logger.exception('Could not verify/repair match review schema')
+        finally:
+            if cursor is not None:
+                try:
+                    cursor.close()
+                except Exception:
+                    pass
+
 
 def _run_matcher(item_type, item_id, db=None):
     """Match one report immediately and return the new matches.
@@ -183,15 +286,29 @@ def save_image(file, folder=''):
 
 
 def log_activity(user_id, action, description, entity_type=None, entity_id=None):
-    db = get_db()
-    cursor = db.cursor()
-    ip = request.remote_addr
-    cursor.execute(
-        'INSERT INTO activity_logs (user_id, action, description, entity_type, entity_id, ip_address) VALUES (%s, %s, %s, %s, %s, %s)',
-        (user_id, action, description, entity_type, entity_id, ip)
-    )
-    db.commit()
-    cursor.close()
+    """Best-effort activity log; never break the action being logged."""
+    cursor = None
+    try:
+        db = get_db()
+        cursor = db.cursor()
+        ip = request.remote_addr
+        cursor.execute(
+            'INSERT INTO activity_logs (user_id, action, description, entity_type, entity_id, ip_address) VALUES (%s, %s, %s, %s, %s, %s)',
+            (user_id, action, description, entity_type, entity_id, ip)
+        )
+        db.commit()
+    except Exception:
+        logger.exception('Could not write activity log (%s)', action)
+        try:
+            get_db().rollback()
+        except Exception:
+            pass
+    finally:
+        if cursor is not None:
+            try:
+                cursor.close()
+            except Exception:
+                pass
 
 
 def paginated_query(cursor, base_query, count_query, params, page, per_page=20):
@@ -1604,35 +1721,100 @@ def admin_rerun_matches():
 @admin_required
 def admin_approve_match(match_id):
     db = get_db()
+    _ensure_match_schema(db)
     cursor = db.cursor()
-    cursor.execute('UPDATE matches SET status = "approved", reviewed_by = %s, reviewed_at = NOW() WHERE id = %s',
-                   (session['user_id'], match_id))
-    db.commit()
+
+    # A stale session can point at a user that no longer exists (e.g. after a
+    # data reset). reviewed_by has a foreign key, so fall back to NULL instead
+    # of failing the whole approval.
+    reviewer_id = session['user_id']
+    cursor.execute('SELECT id FROM users WHERE id = %s', (reviewer_id,))
+    if cursor.fetchone() is None:
+        reviewer_id = None
+
+    try:
+        cursor.execute(
+            'UPDATE matches SET status = %s, reviewed_by = %s, reviewed_at = NOW() '
+            'WHERE id = %s',
+            ('approved', reviewer_id, match_id)
+        )
+        if cursor.rowcount == 0:
+            db.rollback()
+            flash('That match no longer exists.', 'danger')
+            cursor.close()
+            return redirect(url_for('admin_matches'))
+        db.commit()
+    except Exception:
+        db.rollback()
+        logger.exception('Could not approve match %s', match_id)
+        cursor.close()
+        flash('The match could not be approved. Please try again.', 'danger')
+        return redirect(url_for('admin_matches'))
 
     cursor.execute('SELECT lost_item_id, found_item_id FROM matches WHERE id = %s', (match_id,))
     match = cursor.fetchone()
     if match:
-        cursor.execute('UPDATE lost_items SET status = "match_approved" WHERE id = %s', (match[0],))
-        cursor.execute('UPDATE found_items SET status = "match_approved" WHERE id = %s', (match[1],))
-        db.commit()
+        try:
+            cursor.execute(
+                'UPDATE lost_items SET status = %s WHERE id = %s',
+                ('match_approved', match[0])
+            )
+            cursor.execute(
+                'UPDATE found_items SET status = %s WHERE id = %s',
+                ('match_approved', match[1])
+            )
+            db.commit()
+        except Exception:
+            # The match itself is approved; never fail the request because of
+            # an item status enum mismatch on an older database.
+            db.rollback()
+            logger.exception('Could not update item statuses for match %s', match_id)
+            try:
+                cursor.execute(
+                    'UPDATE lost_items SET status = %s WHERE id = %s '
+                    "AND status NOT IN ('recovered','closed','archived')",
+                    ('potential_match', match[0])
+                )
+                cursor.execute(
+                    'UPDATE found_items SET status = %s WHERE id = %s '
+                    "AND status NOT IN ('recovered','closed','archived')",
+                    ('potential_match', match[1])
+                )
+                db.commit()
+            except Exception:
+                db.rollback()
+                logger.exception('Could not fall back item statuses for match %s', match_id)
 
         cursor.execute(
-            'SELECT li.reporter_id, fi.finder_id FROM lost_items li JOIN found_items fi ON fi.id = %s WHERE li.id = %s',
+            'SELECT li.reporter_id, fi.finder_id FROM lost_items li '
+            'JOIN found_items fi ON fi.id = %s WHERE li.id = %s',
             (match[1], match[0])
         )
         users = cursor.fetchone()
         if users:
-            cursor.execute(
-                'INSERT INTO notifications (user_id, title, message, type, related_type, related_id) VALUES (%s, %s, %s, %s, %s, %s)',
-                (users[0], 'Match Approved', 'Your lost item has been matched. Check your matches.', 'match', 'match', match_id)
-            )
-            cursor.execute(
-                'INSERT INTO notifications (user_id, title, message, type, related_type, related_id) VALUES (%s, %s, %s, %s, %s, %s)',
-                (users[1], 'Match Approved', 'Your found item has been matched. Check your matches.', 'match', 'match', match_id)
-            )
-        db.commit()
+            try:
+                cursor.execute(
+                    'INSERT INTO notifications (user_id, title, message, type, related_type, related_id) '
+                    'VALUES (%s, %s, %s, %s, %s, %s)',
+                    (users[0], 'Match Approved', 'Your lost item has been matched. Check your matches.',
+                     'match', 'match', match_id)
+                )
+                cursor.execute(
+                    'INSERT INTO notifications (user_id, title, message, type, related_type, related_id) '
+                    'VALUES (%s, %s, %s, %s, %s, %s)',
+                    (users[1], 'Match Approved', 'Your found item has been matched. Check your matches.',
+                     'match', 'match', match_id)
+                )
+                db.commit()
+            except Exception:
+                db.rollback()
+                logger.exception('Could not create approval notifications for match %s', match_id)
 
-    log_activity(session['user_id'], 'approve_match', f'Approved match {match_id}')
+    try:
+        log_activity(session['user_id'], 'approve_match', f'Approved match {match_id}')
+    except Exception:
+        logger.exception('Could not log approval of match %s', match_id)
+
     cursor.close()
     flash('Match approved successfully.', 'success')
     return redirect(url_for('admin_matches'))
@@ -1643,11 +1825,35 @@ def admin_approve_match(match_id):
 @admin_required
 def admin_reject_match(match_id):
     db = get_db()
+    _ensure_match_schema(db)
     cursor = db.cursor()
-    cursor.execute('UPDATE matches SET status = "rejected", reviewed_by = %s, reviewed_at = NOW() WHERE id = %s',
-                   (session['user_id'], match_id))
-    db.commit()
-    log_activity(session['user_id'], 'reject_match', f'Rejected match {match_id}')
+    reviewer_id = session['user_id']
+    cursor.execute('SELECT id FROM users WHERE id = %s', (reviewer_id,))
+    if cursor.fetchone() is None:
+        reviewer_id = None
+    try:
+        cursor.execute(
+            'UPDATE matches SET status = %s, reviewed_by = %s, reviewed_at = NOW() '
+            'WHERE id = %s',
+            ('rejected', reviewer_id, match_id)
+        )
+        if cursor.rowcount == 0:
+            db.rollback()
+            cursor.close()
+            flash('That match no longer exists.', 'danger')
+            return redirect(url_for('admin_matches'))
+        db.commit()
+    except Exception:
+        db.rollback()
+        logger.exception('Could not reject match %s', match_id)
+        cursor.close()
+        flash('The match could not be rejected. Please try again.', 'danger')
+        return redirect(url_for('admin_matches'))
+
+    try:
+        log_activity(session['user_id'], 'reject_match', f'Rejected match {match_id}')
+    except Exception:
+        logger.exception('Could not log rejection of match %s', match_id)
     cursor.close()
     flash('Match rejected.', 'info')
     return redirect(url_for('admin_matches'))
@@ -1683,6 +1889,7 @@ def admin_verifications():
 @admin_required
 def admin_approve_verification(ver_id):
     db = get_db()
+    _ensure_match_schema(db)
     cursor = db.cursor()
     cursor.execute('SELECT * FROM verification_requests WHERE id = %s', (ver_id,))
     ver = cursor.fetchone()
@@ -1718,6 +1925,7 @@ def admin_approve_verification(ver_id):
 @admin_required
 def admin_reject_verification(ver_id):
     db = get_db()
+    _ensure_match_schema(db)
     cursor = db.cursor()
     cursor.execute('UPDATE verification_requests SET status = "rejected", reviewed_by = %s, reviewed_at = NOW() WHERE id = %s',
                    (session['user_id'], ver_id))
@@ -1758,6 +1966,7 @@ def admin_recoveries():
 @admin_required
 def admin_complete_recovery(recovery_id):
     db = get_db()
+    _ensure_match_schema(db)
     cursor = db.cursor()
     cursor.execute('UPDATE recoveries SET status = "completed", recovered_date = CURDATE() WHERE id = %s', (recovery_id,))
     db.commit()
