@@ -69,6 +69,7 @@
             {% endwith %}
 
             <form method="POST" action="{{ url_for('login') }}" class="auth-form" id="loginForm">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                 <div class="form-section" style="background:transparent;border:none;padding:0;box-shadow:none;">
                     <div class="form-group">
                         <label for="email"><i class="fas fa-envelope"></i> Email Address</label>

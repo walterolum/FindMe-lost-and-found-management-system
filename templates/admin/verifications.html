@@ -33,9 +33,11 @@
                     <td>
                         {% if v[9] == 'pending' %}
                         <form method="POST" action="{{ url_for('admin_approve_verification', ver_id=v[0]) }}" style="display:inline;">
+                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                             <button type="submit" class="btn btn-sm btn-success">Approve</button>
                         </form>
                         <form method="POST" action="{{ url_for('admin_reject_verification', ver_id=v[0]) }}" style="display:inline;">
+                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                             <button type="submit" class="btn btn-sm btn-danger">Reject</button>
                         </form>
                         {% endif %}

@@ -31,6 +31,7 @@
                     <td>
                         {% if r[6] == 'pending' %}
                         <form method="POST" action="{{ url_for('admin_complete_recovery', recovery_id=r[0]) }}" style="display:inline;">
+                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                             <button type="submit" class="btn btn-sm btn-success">Mark Completed</button>
                         </form>
                         {% endif %}

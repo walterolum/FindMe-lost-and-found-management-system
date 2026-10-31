@@ -1,166 +1,128 @@
-# FindMe - Hosting Guide (Compatible Hosting Websites)
+# FindMe Deployment Guide (Render + Aiven + Cloudinary)
 
-FindMe is a **Flask + MySQL** app (with `pymysql` pure-python fallback, `gunicorn` + `whitenoise` for production). Any host that supports **Python 3.11 + MySQL** works. Below are **1-click / free-tier** options tested.
+Free deployment: **Render** (Docker web service) + **Aiven for MySQL** (free, SSL) + **Cloudinary** (images - Render's disk is ephemeral).
 
-## Quick Compatibility Matrix
+For the full beginner-friendly walkthrough see [`README.md`](README.md) → "Deploy to Render + Aiven + Cloudinary".
 
-| Host | Free Tier | MySQL Support | Deploy Method | Recommended For |
-|------|-----------|---------------|---------------|-----------------|
-| **PythonAnywhere** | Yes (1 web app) | Built-in MySQL (free) | Manual + WSGI | Easiest for this stack, no Docker needed |
-| **Render** | Yes (750h) | External MySQL (PlanetScale/Aiven/Railway) | `render.yaml` + `Procfile` | Free HTTPS, auto deploys from GitHub |
-| **Railway** | $5 free credit | Native MySQL plugin | `railway.json` + `Procfile`/`Dockerfile` | Fastest container deploy, 1-click MySQL |
-| **Fly.io** | Free allowance | External MySQL | `Dockerfile` | Global edge |
-| **DigitalOcean App Platform** | $5 | Managed MySQL | `Dockerfile`/`Procfile` | Production |
-| **Heroku** | Paid | ClearDB/JawsDB | `Procfile` | Legacy |
-| **Vercel/Netlify** | — | Not compatible | — | Static only, not for Flask+MySQL |
+## Prerequisites
+- GitHub account with the FindMe repository
+- Aiven account (free tier)
+- Cloudinary account (free tier)
+- Render account (free tier)
 
-> **Repo now includes:** `Procfile`, `runtime.txt`, `render.yaml`, `railway.json`, `nixpacks.toml`, `Dockerfile`, `docker-compose.yml`, `.env.example`, `wsgi.py` (with `pymysql.install_as_MySQLdb()` + WhiteNoise), `config.py` (handles `DATABASE_URL`/`MYSQL_URL`), `/health` endpoint.
+## 1. Create Aiven Free MySQL Service
 
----
+1. Go to [Aiven](https://console.aiven.io/) and create an account
+2. Create a new service → Select MySQL → Choose "Free" tier
+3. Select your preferred cloud region
+4. Create the service (may take a few minutes)
+5. Note the connection details:
+   - Host (e.g. `findme-xxxx.aivencloud.com`), Port `3306`, User `avnadmin`, Password, Database `defaultdb`
+6. Download the **CA certificate** (Overview page → "Access" section → CA Certificate) and save it in the project root as **`ca.pem`** (see [`ca.pem.README`](ca.pem.README)). The certificate is public - it can be committed to the repo.
 
-## 1) PythonAnywhere (Recommended - 100% Compatible)
+## 2. Initialize the Database on Aiven
 
-This repo's `deploy.txt` covers it. Free MySQL included.
-
-1. Sign up at https://www.pythonanywhere.com
-2. Bash console:
-   ```bash
-   git clone https://github.com/walterolum/FindMe-lost-and-found-management-system.git
-   cd FindMe-lost-and-found-management-system
-   python3 -m venv venv
-   source venv/bin/activate
-   pip install -r requirements.txt
-   mkdir -p static/uploads/{avatars,lost,found}
-   ```
-3. **Databases** tab -> Create MySQL DB `yourusername$findme_db` (note host `yourusername.mysql.pythonanywhere-services.com`)
-   ```sql
-   CREATE DATABASE yourusername$findme_db;
-   USE yourusername$findme_db;
-   SOURCE /home/yourusername/FindMe-lost-and-found-management-system/schema.sql;
-   SOURCE /home/yourusername/FindMe-lost-and-found-management-system/seed.sql;
-   ```
-   Or `python init_db.py` after setting env.
-4. Set env vars in `.env` or **Web** tab -> **WSGI file** edit (or via `config.py` env):
-   ```bash
-   SECRET_KEY=random-32-char
-   MYSQL_HOST=yourusername.mysql.pythonanywhere-services.com
-   MYSQL_USER=yourusername
-   MYSQL_PASSWORD=your-mysql-pass
-   MYSQL_DB=yourusername$findme_db
-   ```
-5. **Web** tab -> Add web app -> **Manual** -> Python 3.11 -> set:
-   - Source: `/home/yourusername/FindMe-lost-and-found-management-system`
-   - Working dir: same
-   - WSGI: `/home/yourusername/FindMe-lost-and-found-management-system/wsgi.py`
-   - Virtualenv: `/home/yourusername/FindMe-lost-and-found-management-system/venv`
-   - Static: `/static/` -> `/home/.../static/` and `/uploads/` -> `/home/.../static/uploads/`
-6. **Reload** -> live at `https://yourusername.pythonanywhere.com` -> check `/health` returns `{"status":"ok"}`.
-
-Admin login: `admin@cavendish.ac.ug` / `password123`
-
----
-
-## 2) Render (Free via render.yaml)
-
-Render auto-reads `render.yaml`. Needs external MySQL (free options: PlanetScale, Aiven, TiDB Cloud, Railway MySQL).
-
-1. Create MySQL on **PlanetScale** (or Aiven free) -> copy connection string `mysql://user:pass@host:3306/db`
-2. In **Render** dashboard: **New +** -> **Blueprint** -> connect `walterolum/FindMe-lost-and-found-management-system` -> it detects `render.yaml`
-3. Add env var **DATABASE_URL** (or `MYSQL_HOST`/`USER`/`PASSWORD`/`DB`) in Render Environment
-4. After first deploy, load schema:
-   ```bash
-   mysql -h $MYSQL_HOST -u $MYSQL_USER -p$MYSQL_PASSWORD $MYSQL_DB < schema.sql
-   mysql -h $MYSQL_HOST -u $MYSQL_USER -p$MYSQL_PASSWORD $MYSQL_DB < seed.sql
-   ```
-   Or use Render Shell: `python init_db.py`
-5. Deploy -> live at `https://findme.onrender.com` -> `/health` check.
-
-**One-click button** (add to README):
-```md
-[![Deploy to Render](https://render.com/images/deploy-to-render-button.svg)](https://render.com/deploy?repo=https://github.com/walterolum/FindMe-lost-and-found-management-system)
-```
-
----
-
-## 3) Railway (MySQL Plugin + Fastest)
-
-1. At https://railway.app -> **New Project** -> **Deploy from GitHub** -> `FindMe-lost-and-found-management-system`
-2. **Add MySQL** plugin -> Railway injects `DATABASE_URL` (we auto-parse) or `MYSQL_*` vars
-3. In service **Variables**, ensure:
-   ```
-   SECRET_KEY=generate-random
-   MYSQL_DB=findme_db  # or rely on DATABASE_URL
-   FLASK_ENV=production
-   ```
-4. Railway uses `railway.json` + `nixpacks.toml` -> `gunicorn wsgi:application` auto
-5. After deploy, run in Railway console:
-   ```bash
-   python init_db.py
-   ```
-   Or `mysql < schema.sql` via `railway run mysql ...`
-6. **Deploy** -> public URL generated -> `/health` verify.
-
-**CLI alternative:**
-```bash
-npm i -g @railway/cli
-railway login
-railway init
-railway add --database mysql
-railway up
-```
-
----
-
-## 4) Docker (Any host: Fly.io, DigitalOcean, AWS, Azure, local)
+The Aiven free user **cannot CREATE DATABASE** - use the existing `defaultdb`. `init_db.py` detects a remote host and skips database creation automatically:
 
 ```bash
-docker-compose up --build
-# loads schema/seed automatically via volumes
-# app at http://localhost:5000, db at localhost:3306
+export MYSQL_HOST=your-host.aivencloud.com
+export MYSQL_PORT=3306
+export MYSQL_USER=avnadmin
+export MYSQL_PASSWORD=your-password
+export MYSQL_DB=defaultdb
+export MYSQL_SSL_CA=ca.pem
+python init_db.py
 ```
 
-**Fly.io:**
+This runs `schema.sql` (all tables are `IF NOT EXISTS`) and `seed.sql` (`INSERT IGNORE` - safe to re-run).
+
+**Existing database?** Widen the image columns once:
 ```bash
-fly launch --dockerfile Dockerfile
-fly secrets set SECRET_KEY=... MYSQL_HOST=... MYSQL_USER=... MYSQL_PASSWORD=... MYSQL_DB=findme_db
-fly deploy
+mysql -h your-host.aivencloud.com -u avnadmin -p --ssl-ca=ca.pem defaultdb < migration_widen_image_paths.sql
 ```
 
-**DigitalOcean App Platform:** Connect GitHub repo -> autodetects `Dockerfile` -> add MySQL managed DB -> set env vars.
+**Create a real admin** (never use the demo password in production):
+```bash
+python create_admin.py
+```
 
----
+## 3. Create Cloudinary Account
 
-## 5) Heroku (Procfile)
+1. Go to [Cloudinary](https://cloudinary.com/) and create a free account
+2. From your Dashboard get: **Cloud Name**, **API Key**, **API Secret**
+3. These become `CLOUDINARY_CLOUD_NAME`, `CLOUDINARY_API_KEY`, `CLOUDINARY_API_SECRET`
+
+Images are processed with Pillow (thumbnail 1200px, RGB, quality 85) and uploaded to Cloudinary. The DB keeps the original path style (`lost/<hex>.jpg`); `/uploads/<path>` 302-redirects to the Cloudinary delivery URL.
+
+## 4. Push Code to GitHub
 
 ```bash
-heroku create findme-cu
-heroku addons:create jawsdb:kitefin  # or cleardb:ignite
-heroku config:set SECRET_KEY=$(openssl rand -hex 16)
-git push heroku master
-heroku run python init_db.py
-heroku open
+git add .
+git commit -m "Prepare for Render+Aiven+Cloudinary deployment"
+git push origin main
 ```
 
----
+## 5. Deploy to Render
 
-## Environment Variables
+1. Go to [Render](https://render.com/) → **New** → **Web Service** → connect the GitHub repo
+2. Render reads [`render.yaml`](render.yaml) automatically (Docker runtime, free plan, health check `/healthz`)
+3. In **Dashboard → Environment** set the `sync: false` variables:
 
-See `.env.example`. Priority:
-1. `DATABASE_URL` / `MYSQL_URL` / `JAWSDB_URL` (full URL, auto-parsed)
-2. `MYSQL_HOST`, `MYSQL_PORT`, `MYSQL_USER`, `MYSQL_PASSWORD`, `MYSQL_DB`
+| Variable | Value | Notes |
+|---|---|---|
+| SECRET_KEY | strong random string | `python -c "import secrets; print(secrets.token_hex(32))"` |
+| MYSQL_HOST | your-host.aivencloud.com | From Aiven |
+| MYSQL_USER | avnadmin | From Aiven |
+| MYSQL_PASSWORD | your-password | From Aiven |
+| CLOUDINARY_CLOUD_NAME | your-cloud-name | From Cloudinary |
+| CLOUDINARY_API_KEY | your-api-key | From Cloudinary |
+| CLOUDINARY_API_SECRET | your-api-secret | From Cloudinary |
 
-`SECRET_KEY` **must** be set in production.
+Already set by render.yaml (no action needed): `FINDME_ENV=production`, `MYSQL_DB=defaultdb`, `MYSQL_SSL_CA=ca.pem`, `MYSQL_PORT=3306`.
 
----
+4. Deploy - the app **fails loudly at startup** if required values are missing (check the logs for the exact variable name).
+5. Render gives you a public URL (e.g. `https://findme-xxx.onrender.com`).
 
-## Verification
+Start command (in the Dockerfile): `gunicorn wsgi:app --workers 1 --threads 4 --timeout 120 --bind 0.0.0.0:${PORT:-10000}` - one worker on purpose so the AI-matcher background threads share one process.
 
-After any deploy, test:
-```bash
-curl https://your-app/health        # -> {"status":"ok"}
-curl https://your-app/              # -> landing page
-# Login admin@cavendish.ac.ug / password123 -> /admin/dashboard
-```
+## 6. Test Checklist
 
-Repo: https://github.com/walterolum/FindMe-lost-and-found-management-system
+After deployment:
+- [ ] `/healthz` returns `ok` (200 OK) and `/health` returns `{"status":"ok","service":"FindMe"}`
+- [ ] Register a new account
+- [ ] Login successfully
+- [ ] Report a lost item with an image (uploaded to Cloudinary)
+- [ ] Report a found item with an image
+- [ ] AI matching runs after item creation (check admin → AI Match Review)
+- [ ] Admin approves/rejects matches
+- [ ] Notifications appear correctly
+- [ ] Profile image upload works (5 MB limit)
+- [ ] All pages load without errors
 
+## 7. Troubleshooting
+
+### Cold Start Delay (Free Tier)
+- Render free web services spin down after ~15 min idle. First request after idle may take 30-60 seconds. Normal.
+
+### Database Waking Up (Aiven Free)
+- Aiven free MySQL may power off after inactivity. The app retries connections (3 attempts, backoff) and each request opens its own connection (closed in teardown) - correct for the free tier.
+
+### SSL Errors
+- `MYSQL_SSL_CA=ca.pem` must point to the real Aiven CA file (downloaded, not invented). Local XAMPP needs no CA - SSL is skipped for localhost.
+
+### Missing Environment Variables
+- The app refuses to start without a production `SECRET_KEY` and fails loudly on bad DB/Cloudinary settings. Check Render logs.
+
+### Image Upload Issues
+- Verify Cloudinary credentials; check the free-tier quota. Images are resized to 1200x1200 and quality-85 optimized before upload.
+
+### CSRF / Session Errors
+- All POST forms carry a `csrf_token` (Flask-WTF). If you see "session expired" flashes, just retry the form. Cookies are HttpOnly + SameSite=Lax + Secure in production.
+
+## Notes
+
+- **Ephemeral disk**: production images live on Cloudinary; `static/uploads` is ignored by git (`.gitkeep` keeps the folders).
+- **Exports**: office exports (pptx/docx) stream from memory (BytesIO) - nothing written to disk.
+- **ProxyFix**: configured so `request.remote_addr`/scheme are correct behind Render's proxy (activity-log IPs).
+- **PyMySQL**: used instead of Flask-MySQLdb (pure Python, no C deps needed on free hosts).
+- **Local development is unchanged**: with no new env vars, the app uses XAMPP MySQL on localhost and local-disk uploads exactly as before.

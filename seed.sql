@@ -1,18 +1,21 @@
-USE findme_db;
+-- FindMe seed data
+-- Safe to re-run (INSERT IGNORE skips rows that already exist).
+-- Demo login: admin@cavendish.ac.ug / password123 (demo only - create a real
+-- admin with create_admin.py in production).
 
-INSERT INTO roles (id, name, description) VALUES
+INSERT IGNORE INTO roles (id, name, description) VALUES
 (1, 'Student', 'University student'),
 (2, 'Lecturer', 'University lecturer or staff'),
 (3, 'Administrator', 'System administrator');
 
-INSERT INTO faculties (id, name, description) VALUES
+INSERT IGNORE INTO faculties (id, name, description) VALUES
 (1, 'Faculty of Computing and Information Technology', 'Computing and IT programs'),
 (2, 'Faculty of Business and Management', 'Business and management programs'),
 (3, 'Faculty of Health Sciences', 'Health sciences programs'),
 (4, 'Faculty of Engineering', 'Engineering programs'),
 (5, 'Faculty of Arts and Social Sciences', 'Arts and social sciences programs');
 
-INSERT INTO courses (id, name, code, faculty_id) VALUES
+INSERT IGNORE INTO courses (id, name, code, faculty_id) VALUES
 (1, 'Bachelor of Science in Computer Science', 'BSCS', 1),
 (2, 'Bachelor of Science in Information Technology', 'BSIT', 1),
 (3, 'Bachelor of Business Administration', 'BBA', 2),
@@ -22,7 +25,7 @@ INSERT INTO courses (id, name, code, faculty_id) VALUES
 (7, 'Diploma in Business Administration', 'DBA', 2),
 (8, 'Certificate in IT', 'CIT', 1);
 
-INSERT INTO categories (id, name, description) VALUES
+INSERT IGNORE INTO categories (id, name, description) VALUES
 (1, 'Electronics', 'Electronic devices and accessories'),
 (2, 'Documents', 'Important documents and papers'),
 (3, 'Bags', 'Handbags, backpacks, and bags'),
@@ -35,7 +38,7 @@ INSERT INTO categories (id, name, description) VALUES
 (10, 'Money', 'Currency and financial items'),
 (11, 'Other', 'Other items not listed above');
 
-INSERT INTO locations (id, name, description) VALUES
+INSERT IGNORE INTO locations (id, name, description) VALUES
 (1, 'Main Campus', 'Main campus area'),
 (2, 'Library', 'University library'),
 (3, 'Library Entrance', 'Near the library main entrance'),
@@ -52,7 +55,7 @@ INSERT INTO locations (id, name, description) VALUES
 (14, 'Sports Area', 'Sports and recreation area'),
 (15, 'Other', 'Other locations');
 
-INSERT INTO users (id, full_name, email, phone, student_staff_id, password_hash, role_id, faculty_id, course_id, is_active, email_verified) VALUES
+INSERT IGNORE INTO users (id, full_name, email, phone, student_staff_id, password_hash, role_id, faculty_id, course_id, is_active, email_verified) VALUES
 (1, 'System Admin', 'admin@cavendish.ac.ug', '+256770000001', 'ADM-001', '$2b$12$oJQujYMVUdV5cWv3uMHSZ.5qi0uXqotg0iSuPY1rnoKJGc6s7kwK6', 3, NULL, NULL, TRUE, TRUE),
 (2, 'John Musinguzi', 'john.musinguzi@cavendish.ac.ug', '+256770100002', 'STU-2024001', '$2b$12$oJQujYMVUdV5cWv3uMHSZ.5qi0uXqotg0iSuPY1rnoKJGc6s7kwK6', 1, 1, 1, TRUE, TRUE),
 (3, 'Sarah Nakamya', 'sarah.nakamya@cavendish.ac.ug', '+256770200003', 'STU-2024002', '$2b$12$oJQujYMVUdV5cWv3uMHSZ.5qi0uXqotg0iSuPY1rnoKJGc6s7kwK6', 1, 1, 2, TRUE, TRUE),

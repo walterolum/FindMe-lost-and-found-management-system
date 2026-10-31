@@ -1,12 +1,19 @@
-import subprocess, time, sys, requests
+import subprocess, time, sys, re, requests
 
-proc = subprocess.Popen([sys.executable, 'app.py'], cwd='D:\\capstone\\findme')
+proc = subprocess.Popen([sys.executable, 'app.py'], cwd=r'D:\New folder\findme')
 time.sleep(4)
 
 session = requests.Session()
 
 try:
+    # Fetch the login page first to obtain the CSRF token (Flask-WTF)
+    r = session.get('http://localhost:5000/login', timeout=10)
+    m = re.search(r'name="csrf_token"[^>]*value="([^"]+)"', r.text)
+    token = m.group(1) if m else ''
+    print(f'GET /login: {r.status_code} (csrf token: {"found" if token else "MISSING"})')
+
     r = session.post('http://localhost:5000/login', data={
+        'csrf_token': token,
         'email': 'admin@cavendish.ac.ug',
         'password': 'password123'
     }, allow_redirects=False)

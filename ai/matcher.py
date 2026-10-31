@@ -281,6 +281,7 @@ def identical_features_match(lost, found):
 
 
 def compute_match_score(lost, found):
+    """Score a lost/found pair on 12 factors whose weights sum to 1.00."""
     explanations = []
     weights = {
         'item_name': 0.20,
@@ -294,8 +295,12 @@ def compute_match_score(lost, found):
         'time': 0.02,
         'appearance': 0.08,
         'shape': 0.04,
-        'identical_features': 0.06,
+        'identical_features': 0.10,
     }
+    # Startup check: the 12 factor weights must always total exactly 1.00
+    assert abs(sum(weights.values()) - 1.0) < 1e-9, (
+        f'AI matcher factor weights must sum to 1.00, got {sum(weights.values())}'
+    )
     scores = {}
 
     scores['item_name'] = text_similarity(lost.get('item_name'), found.get('item_name'))

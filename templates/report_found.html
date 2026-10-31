@@ -8,6 +8,7 @@
     </div>
 
     <form method="POST" action="{{ url_for('report_found') }}" enctype="multipart/form-data" class="report-form">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
         <div class="form-section">
             <h3 class="form-section-title"><i class="fas fa-user"></i> Finder Information</h3>
             <div class="form-grid-2">
