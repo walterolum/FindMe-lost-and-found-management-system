@@ -1786,7 +1786,27 @@ input[type="file"] {
    HERO SECTION
    ═══════════════════════════════════════════════════════════ */
 .hero {
-    background: var(--gradient-hero);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 760px;
+    min-height: 92vh;
+    min-height: 92svh;
+    background:
+        /* soft fade at top and bottom */
+        linear-gradient(180deg,
+            rgba(15, 23, 42, 0.55) 0%,
+            rgba(15, 23, 42, 0) 28%,
+            rgba(15, 23, 42, 0) 62%,
+            rgba(15, 23, 42, 0.78) 100%),
+        /* brand colour wash */
+        linear-gradient(135deg,
+            rgba(15, 23, 42, 0.82) 0%,
+            rgba(30, 58, 138, 0.58) 42%,
+            rgba(37, 99, 235, 0.32) 72%,
+            rgba(124, 58, 237, 0.30) 100%),
+        url('../img/cavendish-hero.jpg') 50% 30% / cover no-repeat,
+        var(--gradient-hero);
     color: white;
     padding: var(--space-16) var(--space-6) var(--space-12);
     text-align: center;
@@ -1810,47 +1830,21 @@ input[type="file"] {
     border-radius: 50%;
 }
 .hero-content { position: relative; z-index: 1; max-width: 860px; margin: 0 auto; }
-
-/* Cavendish building hero backdrop (standard & classic) */
-.hero-backdrop {
-    position: absolute;
-    inset: 0;
-    z-index: 0;
-    overflow: hidden;
-    display: flex;
-    align-items: flex-end;
-    justify-content: center;
-    pointer-events: none;
-}
-.hero-building {
-    width: min(1500px, 118%);
-    height: auto;
-    flex: 0 0 auto;
-    opacity: .92;
-    margin-bottom: -2px;
-    transform: translateZ(0); /* crisp rendering */
-}
-.hero-scrim {
-    position: absolute;
-    inset: 0;
-    background: linear-gradient(180deg,
-        rgba(15, 23, 42, 0.62) 0%,
-        rgba(15, 23, 42, 0.30) 34%,
-        rgba(30, 58, 138, 0.08) 58%,
-        rgba(15, 23, 42, 0.18) 100%);
-}
 .hero-title {
     font-size: var(--text-5xl);
     font-weight: var(--font-extrabold);
     line-height: var(--line-tight);
     margin-bottom: var(--space-5);
     color: white;
+    text-shadow: 0 2px 24px rgba(15, 23, 42, 0.55);
 }
 .hero-title .gradient-text {
     background: linear-gradient(135deg, #93c5fd, #bfdbfe);
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
     background-clip: text;
+    text-shadow: none;
+    filter: drop-shadow(0 2px 14px rgba(15, 23, 42, 0.5));
 }
 .hero-subtitle {
     font-size: var(--text-lg);
@@ -1858,7 +1852,8 @@ input[type="file"] {
     max-width: 640px;
     margin: 0 auto var(--space-8);
     line-height: var(--line-relaxed);
-    color: rgba(255,255,255,0.85);
+    color: rgba(255,255,255,0.92);
+    text-shadow: 0 1px 12px rgba(15, 23, 42, 0.6);
 }
 .hero-actions {
     display: flex;
@@ -2663,9 +2658,7 @@ body.no-sidebar .main-content { margin-left: 0; }
 
     .page-container { padding: var(--space-5) var(--space-4); }
     .hero-title { font-size: var(--text-3xl); }
-    .hero { padding: var(--space-12) var(--space-4) var(--space-10); }
-    .hero-building { width: 170%; }
-    .hero-scrim { background: linear-gradient(180deg, rgba(15,23,42,0.70) 0%, rgba(15,23,42,0.34) 40%, rgba(15,23,42,0.26) 100%); }
+    .hero { padding: var(--space-12) var(--space-4) var(--space-10); min-height: 88vh; min-height: 88svh; background-position: 50% 30%; }
     .hero-stats { gap: var(--space-6); }
     .hero-actions { flex-direction: column; align-items: center; }
     .hero-actions .btn { width: 100%; max-width: 320px; }
