@@ -1,5 +1,5 @@
 # Render Blueprint: one Docker web service (free plan)
-# Secrets (SECRET_KEY, MYSQL_*, CLOUDINARY_*) are marked sync:false - set them
+# Secrets (SECRET_KEY, MYSQL_*, CLOUDINARY_*, SMTP_*) are marked sync:false - set them
 # in the Render dashboard (Dashboard -> Environment). The app fails loudly at
 # startup if required values are missing.
 services:
@@ -30,4 +30,15 @@ services:
       - key: CLOUDINARY_API_KEY
         sync: false
       - key: CLOUDINARY_API_SECRET
+        sync: false
+      # Email (optional): owners get the match PDF by email when these are set
+      - key: SMTP_HOST
+        value: smtp.gmail.com
+      - key: SMTP_PORT
+        value: "587"
+      - key: SMTP_USER
+        sync: false
+      - key: SMTP_PASSWORD
+        sync: false
+      - key: SMTP_FROM
         sync: false
