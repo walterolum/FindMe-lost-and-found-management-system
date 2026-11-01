@@ -1810,6 +1810,35 @@ input[type="file"] {
     border-radius: 50%;
 }
 .hero-content { position: relative; z-index: 1; max-width: 860px; margin: 0 auto; }
+
+/* Cavendish building hero backdrop (standard & classic) */
+.hero-backdrop {
+    position: absolute;
+    inset: 0;
+    z-index: 0;
+    overflow: hidden;
+    display: flex;
+    align-items: flex-end;
+    justify-content: center;
+    pointer-events: none;
+}
+.hero-building {
+    width: min(1500px, 118%);
+    height: auto;
+    flex: 0 0 auto;
+    opacity: .92;
+    margin-bottom: -2px;
+    transform: translateZ(0); /* crisp rendering */
+}
+.hero-scrim {
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(180deg,
+        rgba(15, 23, 42, 0.62) 0%,
+        rgba(15, 23, 42, 0.30) 34%,
+        rgba(30, 58, 138, 0.08) 58%,
+        rgba(15, 23, 42, 0.18) 100%);
+}
 .hero-title {
     font-size: var(--text-5xl);
     font-weight: var(--font-extrabold);
@@ -2635,6 +2664,8 @@ body.no-sidebar .main-content { margin-left: 0; }
     .page-container { padding: var(--space-5) var(--space-4); }
     .hero-title { font-size: var(--text-3xl); }
     .hero { padding: var(--space-12) var(--space-4) var(--space-10); }
+    .hero-building { width: 170%; }
+    .hero-scrim { background: linear-gradient(180deg, rgba(15,23,42,0.70) 0%, rgba(15,23,42,0.34) 40%, rgba(15,23,42,0.26) 100%); }
     .hero-stats { gap: var(--space-6); }
     .hero-actions { flex-direction: column; align-items: center; }
     .hero-actions .btn { width: 100%; max-width: 320px; }
