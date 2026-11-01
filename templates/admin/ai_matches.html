@@ -98,24 +98,12 @@
                     <i class="fas fa-xmark"></i> Reject
                 </button>
             </form>
-            <form method="POST" action="{{ url_for('admin_send_match_pdf', match_id=m[0]) }}">
-                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                <button type="submit" class="btn btn-outline" title="Generate the match report PDF and email it to the owner now">
-                    <i class="fas fa-file-pdf"></i> Email PDF to Owner
-                </button>
-            </form>
             <a href="{{ url_for('match_pdf_download', match_id=m[0]) }}" class="btn btn-outline" title="Download the match report PDF">
-                <i class="fas fa-download"></i> PDF
+                <i class="fas fa-download"></i> Download PDF
             </a>
         </div>
         {% elif m[6] == 'approved' %}
         <div class="match-actions">
-            <form method="POST" action="{{ url_for('admin_send_match_pdf', match_id=m[0]) }}">
-                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                <button type="submit" class="btn btn-outline" title="Email the match report PDF to the owner with one click">
-                    <i class="fas fa-file-pdf"></i> Email PDF to Owner (1 click)
-                </button>
-            </form>
             <a href="{{ url_for('match_pdf_download', match_id=m[0]) }}" class="btn btn-outline" title="Download the match report PDF">
                 <i class="fas fa-download"></i> Download PDF
             </a>

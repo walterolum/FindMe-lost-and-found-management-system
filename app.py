@@ -2077,33 +2077,6 @@ def admin_rerun_matches():
     return redirect(url_for('admin_matches'))
 
 
-@app.route('/admin/match/<int:match_id>/send-pdf', methods=['POST'])
-@login_required
-@admin_required
-def admin_send_match_pdf(match_id):
-    """One-click: email the match report PDF to the owner."""
-    db = get_db()
-    _ensure_match_schema(db)
-    ok, detail = _email_match_report(db, match_id, trigger='admin')
-
-    if ok:
-        flash('Match report PDF sent to the owner.', 'success')
-    elif detail == 'not-found':
-        flash('That match no longer exists.', 'danger')
-    elif detail == 'no-owner-email':
-        flash('The owner has no email on record. Use "Download PDF" on the match page to share it manually.', 'warning')
-    elif detail == 'smtp-not-configured':
-        flash('SMTP is not configured. Set SMTP_HOST/SMTP_USER/SMTP_PASSWORD/SMTP_FROM to email owners; '
-              'until then use "Download PDF".', 'warning')
-    else:
-        flash('Could not email the PDF right now - please try again.', 'danger')
-
-    target = request.referrer
-    if not target or 'send-pdf' in target:
-        return redirect(url_for('admin_matches'))
-    return redirect(target)
-
-
 @app.route('/admin/match/<int:match_id>/approve', methods=['POST'])
 @login_required
 @admin_required

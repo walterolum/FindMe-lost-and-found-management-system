@@ -93,7 +93,7 @@ git push origin main
 
 Already set by render.yaml (no action needed): `FINDME_ENV=production`, `MYSQL_DB=defaultdb`, `MYSQL_SSL_CA=ca.pem`, `MYSQL_PORT=3306`.
 
-**Without SMTP**, owner emails fall back to the server log (console mailbox) and match report PDFs stay downloadable: admins get a one-click **"Email PDF to Owner"** button plus **"Download PDF"** on every match, and owners/finder can download the same PDF from the match detail page.
+**Without SMTP**, owner emails fall back to the server log (console mailbox) and match report PDFs stay downloadable: admins get **"Download PDF"** on every match, and owners/finder can download the same PDF from the match detail page.
 
 4. Deploy - the app **fails loudly at startup** if required values are missing (check the logs for the exact variable name).
 5. Render gives you a public URL (e.g. `https://findme-xxx.onrender.com`).
@@ -112,7 +112,7 @@ After deployment:
 - [ ] Report a lost item with an image (stored in the DB `images` table)
 - [ ] Report a found item with an image
 - [ ] AI matching runs after item creation (check admin → AI Match Review)
-- [ ] Approving a match emails the match report PDF to the owner (or logs the console email + offers the one-click "Email PDF to Owner" when SMTP is unset)
+- [ ] Approving a match emails the match report PDF to the owner (or logs the console email when SMTP is unset; "Download PDF" is always available)
 - [ ] Admin approves/rejects matches
 - [ ] Notifications appear correctly
 - [ ] Profile image upload works (5 MB limit)
