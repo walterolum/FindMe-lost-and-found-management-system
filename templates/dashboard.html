@@ -14,7 +14,7 @@
                     <span class="dash-clock-greet"><i class="fas fa-sun"></i><span id="clockGreet">Hi</span></span>
                     <span class="dash-clock-badge">Live</span>
                 </div>
-                <div class="dash-clock-time" id="clockTime">--:--<small id="clockSec">--</small></div>
+                <div class="dash-clock-time" id="clockTime">--:--<span class="dash-clock-secs" id="clockSecs">:--</span><small id="clockSec">--</small></div>
                 <div class="dash-clock-date" id="clockDate"></div>
             </div>
             <a href="{{ url_for('report_lost') }}" class="btn btn-danger">
@@ -192,10 +192,11 @@
 </div>
 
 <script>
-    // Modern live clock (dashboards): time, seconds, date and greeting.
+    // Modern live clock (dashboards): time, seconds, AM/PM, date and greeting.
     (function () {
         var t = document.getElementById('clockTime'),
             s = document.getElementById('clockSec'),
+            ss = document.getElementById('clockSecs'),
             d = document.getElementById('clockDate'),
             g = document.getElementById('clockGreet'),
             gi = document.querySelector('.dash-clock-greet i');
@@ -206,6 +207,10 @@
             t.firstChild.nodeValue =
                 String(h % 12 || 12).padStart(2, '0') + ':' + String(now.getMinutes()).padStart(2, '0');
             s.textContent = ' ' + (h >= 12 ? 'PM' : 'AM');
+            if (ss) {
+                ss.textContent = ':' + String(now.getSeconds()).padStart(2, '0');
+                ss.classList.remove('tick'); void ss.offsetWidth; ss.classList.add('tick');
+            }
             d.textContent = now.toLocaleDateString(undefined, { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
             var greet = h < 12 ? 'Good morning' : (h < 17 ? 'Good afternoon' : 'Good evening');
             if (g.textContent !== greet) {

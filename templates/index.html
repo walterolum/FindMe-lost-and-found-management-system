@@ -8,8 +8,8 @@
     <link rel="icon" type="image/svg+xml" href="{{ url_for('static', filename='img/favicon.svg') }}">
     <link rel="icon" type="image/png" sizes="32x32" href="{{ url_for('static', filename='img/favicon-32.png') }}">
     <link rel="apple-touch-icon" href="{{ url_for('static', filename='img/apple-touch-icon.png') }}">
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}?v=20261104a">
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/glass.css') }}?v=20261104a">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}?v=20261105a">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/glass.css') }}?v=20261105a">
     <link rel="preconnect" href="https://cdnjs.cloudflare.com" crossorigin>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -45,8 +45,10 @@
     <!-- Hero Section -->
     <section class="hero">
         <div class="hero-content">
-            <h1 class="hero-title">
-                Lost Something? <span class="gradient-text">Find It.</span>
+            <h1 class="hero-title" aria-label="Lost Something? Find It.">
+                <span class="hw" style="--i:0" aria-hidden="true">Lost</span>
+                <span class="hw" style="--i:1" aria-hidden="true">Something?</span>
+                <span class="hero-find" aria-hidden="true"><span class="hw" style="--i:2">Find</span> <span class="hw" style="--i:3">It.</span></span>
             </h1>
             <p class="hero-subtitle">
                 Smart AI-powered lost and found system for Cavendish University students.
