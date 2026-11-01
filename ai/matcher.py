@@ -1,31 +1,33 @@
 """FindMe AI matching engine.
 
-Pure-Python, dependency-free similarity scoring between lost and found
-reports.  The module is deliberately isolated from Flask: the only entry
-points used by ``app.py`` are ``find_potential_matches()``,
-``backfill_matches()`` and ``rerun_all_matches()``.
+Pure-Python similarity scoring between lost and found reports.  The module
+is deliberately isolated from Flask: the only entry points used by
+``app.py`` are ``find_potential_matches()``, ``backfill_matches()`` and
+``rerun_all_matches()``.
 
-Scoring is a 12-factor weighted sum (weights total exactly 1.00).  The
-engine also applies a few hard rules that a pure weighted sum cannot
-express:
+The engine is built for *precision*: items are valuable, so a wrong match is
+worse than no match.  It applies deterministic hard rules where possible and
+a conservative evidence gate everywhere else:
 
-* a *matching* serial number is near-proof (score floor 96 %);
-* a *conflicting* serial number is near-proof that the reports are not the
-  same item (score ceiling 35 %);
-* two known but different categories are penalised;
-* a very close item name can still be proposed when the report is sparse.
+* an identical serial number is a deterministic 100 % match;
+* identical unique marks are near-deterministic (96 % floor);
+* a conflicting serial number hard-rejects the pair;
+* unknown fields contribute zero evidence instead of partial credit;
+* generic names ("phone", "bag", "bottle") are weakened;
+* a perceptual image hash (dHash) is used when both reports have a photo;
+* at least two independent strong signals are required for fuzzy matches.
 
 The minimum confidence stored in ``matches`` is ``MIN_MATCH_CONFIDENCE``.
 """
 
-import os
 import re
 from datetime import date, datetime, time, timedelta
 from difflib import SequenceMatcher
 
 # ── Tunables ──────────────────────────────────────────────────────────────
-MIN_MATCH_CONFIDENCE = 25.0
-MAX_CANDIDATE_ITEMS = 200
+MIN_MATCH_CONFIDENCE = 50.0
+MIN_EVIDENCE_SIGNALS = 5
+MAX_CANDIDATE_ITEMS = 500
 MAX_MATCHES_PER_RUN = 10
 OPEN_STATUSES = ('reported', 'under_review', 'potential_match',
                  'match_pending_approval')
@@ -67,12 +69,26 @@ _SHAPE_ALIASES = [
     {'large', 'big', 'oversized', 'bulky'},
 ]
 
-# Optional image keywords.  Kept for the (clearly labelled) simulated image
-# comparison used when Cloudinary/disk images are unavailable.
-_IMAGE_KEYWORDS = (
-    'phone', 'laptop', 'tablet', 'wallet', 'bag', 'watch', 'ring', 'keys',
-    'book', 'glasses', 'camera', 'headphones', 'charger', 'umbrella',
-)
+# A name made only of these words describes a whole class of items, not one
+# specific item.  It still counts a little, but it cannot carry a match.
+_GENERIC_NAME_WORDS = {
+    'phone', 'phones', 'mobile', 'smartphone', 'laptop', 'computer', 'pc',
+    'tablet', 'ipad', 'bag', 'bags', 'backpack', 'handbag', 'wallet', 'purse',
+    'watch', 'ring', 'keys', 'key', 'book', 'books', 'notebook', 'glasses',
+    'spectacles', 'camera', 'headphones', 'earphones', 'earbuds', 'charger',
+    'umbrella', 'bottle', 'flask', 'cup', 'jacket', 'coat', 'hoodie',
+    'sweater', 'shirt', 'trousers', 'shoes', 'sandals', 'cap', 'hat',
+    'id', 'card', 'student', 'identity', 'calculator', 'power', 'bank',
+    'cable', 'adapter', 'mouse', 'keyboard', 'usb',
+    'flash', 'disk', 'drive', 'mat', 'towel', 'jersey', 'uniform',
+}
+
+# Values people type when they do not actually know an identifier.
+_IDENTIFIER_NOISE = {
+    'na', 'n/a', 'none', 'nil', 'null', 'unknown', 'noserial', 'notserial',
+    'no', 'not', 'notavailable', 'notknown', 'x', 'xx', 'xxx', '0', '00',
+    '0000', '000000', '1234', '12345', '123456', '12345678', 'abcdef',
+}
 
 
 def row_to_dict(cursor, row):
@@ -107,11 +123,66 @@ def _tokens(value):
     return set(meaningful or words)
 
 
+def _normalize_identifier(value):
+    """Compact identifier form: letters/digits only, lower-case.
+
+    ``"SN-123 456"`` and ``"sn123456"`` are the same serial number.
+    Returns '' for empty or obvious placeholder values.
+    """
+    if value is None:
+        return ''
+    compact = re.sub(r'[^a-z0-9]+', '', str(value).lower())
+    if compact in _IDENTIFIER_NOISE:
+        return ''
+    return compact
+
+
+def _is_generic_name(value):
+    """True when a name contains only class words (no model/brand detail)."""
+    words = _normalize(value).split()
+    meaningful = [word for word in words if word not in _STOPWORDS]
+    if not meaningful:
+        return True
+    return all(word in _GENERIC_NAME_WORDS for word in meaningful)
+
+
 def _as_int(value):
     try:
         return int(value)
     except (TypeError, ValueError):
         return None
+
+
+def image_hash_similarity(hash1, hash2):
+    """Similarity in [0, 1] between two 64-bit dHash hex strings.
+
+    Photos of the same object usually differ by only a handful of bits.
+    Missing hashes return 0.0: unknown evidence must never add confidence.
+    """
+    if not hash1 or not hash2:
+        return 0.0
+    h1 = str(hash1).strip().lower()
+    h2 = str(hash2).strip().lower()
+    if len(h1) != 16 or len(h2) != 16:
+        return 0.0
+    try:
+        v1 = int(h1, 16)
+        v2 = int(h2, 16)
+    except ValueError:
+        return 0.0
+
+    distance = bin(v1 ^ v2).count('1')
+    if distance <= 4:
+        return 1.0
+    if distance <= 8:
+        return 0.9
+    if distance <= 12:
+        return 0.75
+    if distance <= 18:
+        return 0.5
+    if distance <= 26:
+        return 0.25
+    return 0.0
 
 
 def text_similarity(str1, str2):
@@ -140,13 +211,11 @@ def text_similarity(str1, str2):
 
 
 def category_match(cat1, cat2):
-    """1.0 same category, 0.5 both unknown, 0.25 one unknown, 0.15 different."""
+    """1.0 same category, 0.05 different, 0.0 when either is unknown."""
     c1, c2 = _as_int(cat1), _as_int(cat2)
-    if c1 is None and c2 is None:
-        return 0.5
     if c1 is None or c2 is None:
-        return 0.25
-    return 1.0 if c1 == c2 else 0.15
+        return 0.0
+    return 1.0 if c1 == c2 else 0.05
 
 
 def color_match(color1, color2):
@@ -220,7 +289,7 @@ def date_proximity(date1_str, date2_str):
     d1 = _parse_date(date1_str)
     d2 = _parse_date(date2_str)
     if d1 is None or d2 is None:
-        return 0.3
+        return 0.0
     diff_days = abs((d1 - d2).days)
     if diff_days == 0:
         return 1.0
@@ -261,7 +330,7 @@ def time_proximity(time1, time2):
     m1 = _parse_minutes(time1)
     m2 = _parse_minutes(time2)
     if m1 is None or m2 is None:
-        return 0.3
+        return 0.0
     diff_minutes = abs(m1 - m2)
     diff_minutes = min(diff_minutes, 24 * 60 - diff_minutes)
     if diff_minutes <= 30:
@@ -293,37 +362,6 @@ def description_similarity(desc1, desc2):
     return round(jaccard * 0.6 + base_text * 0.4, 4)
 
 
-def image_similarity_simulated(img_path1, img_path2):
-    """Best-effort image hint (filename heuristics).
-
-    This is intentionally labelled *simulated*: it never pretends to be a
-    vision model.  Real visual matching can be added later by replacing this
-    function without touching the rest of the engine.
-    """
-    if not img_path1 or not img_path2:
-        return 0.0
-    name1 = os.path.basename(str(img_path1)).lower()
-    name2 = os.path.basename(str(img_path2)).lower()
-    name1_no_ext = os.path.splitext(name1)[0]
-    name2_no_ext = os.path.splitext(name2)[0]
-    if name1_no_ext == name2_no_ext:
-        return 1.0
-    if name1_no_ext in name2_no_ext or name2_no_ext in name1_no_ext:
-        return 0.85
-    ext1 = os.path.splitext(name1)[1]
-    ext2 = os.path.splitext(name2)[1]
-    if ext1 and ext2 and ext1 == ext2:
-        return 0.45
-    for keyword in _IMAGE_KEYWORDS:
-        k1 = keyword in name1_no_ext
-        k2 = keyword in name2_no_ext
-        if k1 and k2:
-            return 0.6
-        if k1 or k2:
-            return 0.35
-    return 0.25
-
-
 def shape_match(shape1, shape2):
     if not shape1 or not shape2:
         return 0.0
@@ -344,21 +382,22 @@ def shape_match(shape1, shape2):
 
 
 def appearance_match(lost, found):
+    """Real visual similarity from the stored perceptual hashes.
+
+    Both reports must carry a dHash; a missing photo is unknown evidence and
+    therefore scores zero.  Shape has its own weighted factor.
+    """
     if not lost and not found:
         return 0.0
-    image_score = image_similarity_simulated(
-        lost.get('image_path'), found.get('image_path')
-    )
-    shape_score = shape_match(lost.get('shape'), found.get('shape'))
-    combined = image_score * 0.6 + shape_score * 0.4
-    return round(min(max(combined, 0.0), 1.0), 4)
+    return round(image_hash_similarity(
+        lost.get('image_hash'), found.get('image_hash')
+    ), 4)
 
 
 def serial_number_match(sn1, sn2):
-    if not sn1 or not sn2:
-        return None
-    s1 = _normalize(sn1)
-    s2 = _normalize(sn2)
+    """1.0 exact serial, 0.0 conflict, None when unknown/placeholder."""
+    s1 = _normalize_identifier(sn1)
+    s2 = _normalize_identifier(sn2)
     if not s1 or not s2:
         return None
     return 1.0 if s1 == s2 else 0.0
@@ -369,7 +408,7 @@ def unique_marks_match(marks1, marks2):
         return None
     m1 = _normalize(marks1)
     m2 = _normalize(marks2)
-    if not m1 or not m2:
+    if not m1 or not m2 or m1 in _IDENTIFIER_NOISE or m2 in _IDENTIFIER_NOISE:
         return None
     return text_similarity(m1, m2)
 
@@ -426,21 +465,26 @@ def identical_features_match(lost, found):
 
 
 def compute_match_score(lost, found):
-    """Score a lost/found pair on 12 factors whose weights sum to 1.00."""
+    """Score a lost/found pair on 12 factors whose weights sum to 1.00.
+
+    Unknown fields always score zero.  The returned ``evidence`` count is
+    the number of independent signal groups that agree, and is used by
+    :func:`is_match_candidate` to reject weak coincidences.
+    """
     lost = lost or {}
     found = found or {}
 
     weights = {
-        'item_name': 0.22,
-        'category': 0.10,
+        'item_name': 0.20,
+        'category': 0.08,
         'color': 0.08,
-        'brand': 0.07,
-        'model': 0.06,
+        'brand': 0.08,
+        'model': 0.08,
         'description': 0.10,
         'location': 0.10,
-        'date': 0.04,
-        'time': 0.02,
-        'appearance': 0.07,
+        'date': 0.03,
+        'time': 0.01,
+        'appearance': 0.10,
         'shape': 0.04,
         'identical_features': 0.10,
     }
@@ -451,10 +495,24 @@ def compute_match_score(lost, found):
     scores = {}
     explanations = []
 
-    scores['item_name'] = text_similarity(
-        lost.get('item_name'), found.get('item_name')
+    # ── Text / metadata factors ───────────────────────────────────────────
+    name_score = text_similarity(lost.get('item_name'), found.get('item_name'))
+    both_generic = (
+        _is_generic_name(lost.get('item_name'))
+        and _is_generic_name(found.get('item_name'))
     )
-    explanations.append(('Item name similarity', scores['item_name']))
+    generic_name = _is_generic_name(lost.get('item_name')) or _is_generic_name(
+        found.get('item_name')
+    )
+    if both_generic:
+        name_score = round(name_score * 0.35, 4)
+        explanations.append(('Item name is generic (weak evidence)', name_score))
+    elif generic_name:
+        name_score = round(name_score * 0.75, 4)
+        explanations.append(('Item name similarity (partly generic)', name_score))
+    else:
+        explanations.append(('Item name similarity', name_score))
+    scores['item_name'] = name_score
 
     scores['category'] = category_match(
         lost.get('category_id'), found.get('category_id')
@@ -492,7 +550,7 @@ def compute_match_score(lost, found):
     explanations.append(('Time proximity', scores['time']))
 
     scores['appearance'] = appearance_match(lost, found)
-    explanations.append(('Appearance / photo similarity', scores['appearance']))
+    explanations.append(('Photo similarity (perceptual hash)', scores['appearance']))
 
     scores['shape'] = shape_match(lost.get('shape'), found.get('shape'))
     explanations.append(('Shape match', scores['shape']))
@@ -503,40 +561,101 @@ def compute_match_score(lost, found):
 
     total_score = sum(scores[key] * weights[key] for key in weights) * 100
 
-    # ── Hard rules ────────────────────────────────────────────────────────
-    serial1 = _normalize(lost.get('serial_number'))
-    serial2 = _normalize(found.get('serial_number'))
+    # ── Deterministic identifiers ─────────────────────────────────────────
+    serial1 = _normalize_identifier(lost.get('serial_number'))
+    serial2 = _normalize_identifier(found.get('serial_number'))
+    serial_exact = bool(
+        serial1 and serial2 and serial1 == serial2 and len(serial1) >= 3
+    )
     serial_conflict = bool(serial1 and serial2 and serial1 != serial2)
 
+    marks1 = _normalize(lost.get('unique_marks'))
+    marks2 = _normalize(found.get('unique_marks'))
+    marks_exact = bool(
+        marks1 and marks2 and marks1 == marks2 and len(marks1) >= 6
+        and marks1 not in _IDENTIFIER_NOISE and not _is_generic_name(marks1)
+    )
+
+    deterministic = serial_exact or marks_exact
+    if serial_exact:
+        total_score = 100.0
+        explanations.append(('IDENTICAL SERIAL NUMBER - deterministic match', 1.0))
+    elif marks_exact:
+        total_score = max(total_score, 96.0)
+        explanations.append(('IDENTICAL UNIQUE MARKS - near-deterministic', 1.0))
+
+    # ── Conflicts ─────────────────────────────────────────────────────────
     cat1, cat2 = _as_int(lost.get('category_id')), _as_int(found.get('category_id'))
     category_conflict = bool(cat1 is not None and cat2 is not None and cat1 != cat2)
 
-    if serial1 and serial2 and serial1 == serial2:
-        total_score = max(total_score, 96.0)
-        explanations.append(('Serial numbers are identical (near-certain match)', 1.0))
-    elif scores.get('unique_marks', 0) >= 0.95:
-        total_score = max(total_score, 90.0)
-        explanations.append(('Unique identifying marks are identical', 1.0))
+    brand1 = _normalize(lost.get('brand'))
+    brand2 = _normalize(found.get('brand'))
+    model1 = _normalize(lost.get('model'))
+    model2 = _normalize(found.get('model'))
+    brand_conflict = bool(brand1 and brand2 and scores['brand'] < 0.5)
+    model_conflict = bool(model1 and model2 and scores['model'] < 0.5)
 
+    conflicts = []
     if serial_conflict:
-        # Different serial numbers on serialised devices (phones, laptops)
-        # strongly indicate two different items.
-        total_score = min(total_score, 35.0)
-        explanations.append(('Serial numbers differ (strong negative signal)', 0.0))
-
+        total_score = min(total_score, 10.0)
+        conflicts.append('serial numbers differ')
     if category_conflict:
-        total_score *= 0.9
-        explanations.append(('Reported categories differ', 0.0))
+        total_score *= 0.70
+        conflicts.append('categories differ')
+    if brand_conflict:
+        total_score *= 0.85
+        conflicts.append('brands differ')
+    if model_conflict:
+        total_score *= 0.88
+        conflicts.append('models differ')
+    if brand_conflict and model_conflict and not serial_conflict:
+        # Same class of item but a different make and model is very unlikely
+        # to be the same physical object.
+        total_score = min(total_score, 35.0)
+
+    # ── Independent evidence groups ───────────────────────────────────────
+    evidence = set()
+    if scores['item_name'] >= 0.60 and not both_generic:
+        evidence.add('name')
+    if scores['category'] >= 0.99:
+        evidence.add('category')
+    if scores['color'] >= 0.85:
+        evidence.add('color')
+    if scores['brand'] >= 0.85 or scores['model'] >= 0.85:
+        evidence.add('brand/model')
+    if scores['description'] >= 0.45:
+        evidence.add('description')
+    if scores['location'] >= 0.85:
+        evidence.add('location')
+    if scores['date'] >= 0.85 or scores['time'] >= 0.70:
+        evidence.add('date/time')
+    if scores['appearance'] >= 0.85:
+        evidence.add('photo')
+    if scores['shape'] >= 0.85:
+        evidence.add('shape')
+    if scores.get('unique_marks', 0) >= 0.90:
+        evidence.add('unique marks')
 
     total_score = round(min(max(total_score, 0.0), 100.0), 2)
 
+    # ── Human-readable explanation ────────────────────────────────────────
     explanation_lines = [
         f'{label}: {int(score * 100)}%' for label, score in explanations
     ]
     explanation_text = '\n'.join(f'• {line}' for line in explanation_lines)
+    if deterministic:
+        explanation_text += (
+            '\n\n**Deterministic identifier match - this pair is certain.**'
+        )
+    if conflicts:
+        explanation_text += '\n\nConflicts: ' + ', '.join(conflicts) + '.'
+    explanation_text += (
+        f'\n\nIndependent matching signals: {len(evidence)}'
+        f' ({", ".join(sorted(evidence)) if evidence else "none"})'
+    )
     explanation_text += f'\n\n**Overall Confidence: {int(total_score)}%**'
 
-    if total_score >= 90:
+    if total_score >= 95:
         level = 'very_high'
     elif total_score >= 75:
         level = 'high'
@@ -551,20 +670,40 @@ def compute_match_score(lost, found):
         'explanation': explanation_text,
         'scores': scores,
         'hard_conflict': serial_conflict,
+        'deterministic': deterministic,
+        'evidence': sorted(evidence),
+        'evidence_count': len(evidence),
     }
 
 
 def is_match_candidate(result):
-    """Whether a scored pair is worth storing for human review."""
+    """Whether a scored pair is strong enough to store for human review.
+
+    Deterministic identifiers always pass.  Fuzzy evidence must clear the
+    confidence threshold *and* have several independent signal groups, which
+    is what stops "two black phones" from becoming a match:
+
+    * >= 50 % confidence with >= 5 agreeing groups;
+    * >= 65 % confidence with >= 2 groups (e.g. exact photo hash + name);
+    * >= 45 % confidence with >= 5 groups (coherent but sparse reports).
+    """
     if not result or result.get('hard_conflict'):
         return False
-    score = result.get('confidence_score', 0)
-    if score >= MIN_MATCH_CONFIDENCE:
+    if result.get('deterministic'):
         return True
-    # Sparse reports: a very strong name match is still a useful lead, even
-    # when there is not enough metadata to cross the normal threshold.
-    name_score = result.get('scores', {}).get('item_name', 0)
-    return name_score >= 0.85 and score >= 18.0
+
+    score = result.get('confidence_score', 0)
+    evidence = result.get('evidence_count', 0)
+    if score >= MIN_MATCH_CONFIDENCE and evidence >= MIN_EVIDENCE_SIGNALS:
+        return True
+    # A very strong pair with two independent groups (for example an exact
+    # photo hash plus matching name/brand) is still worth a human look.
+    if score >= 65.0 and evidence >= 2:
+        return True
+    # Coherent but sparse reports: five independent groups agreeing (name,
+    # category, colour, location and date/time) is a useful lead even when
+    # the weighted score stays below the normal threshold.
+    return score >= 45.0 and evidence >= 5
 
 
 # ══════════════════════════════════════════════════════════════════════════
@@ -575,6 +714,36 @@ def _placeholders(values):
     return ', '.join(['%s'] * len(values))
 
 
+def _attach_image_hashes(cursor, items):
+    """Add the perceptual hash for each item's photo (when one exists).
+
+    Hashes live in the ``images`` table so item rows stay unchanged.  A
+    missing table (older deployment) simply means no photo evidence.
+    """
+    paths = sorted({
+        item.get('image_path') for item in items if item.get('image_path')
+    })
+    if not paths:
+        for item in items:
+            item['image_hash'] = None
+        return
+
+    hashes = {}
+    try:
+        cursor.execute(
+            f'SELECT path, dhash FROM images WHERE path IN ({_placeholders(paths)})',
+            tuple(paths),
+        )
+        hashes = {row[0]: row[1] for row in cursor.fetchall()}
+    except Exception:
+        # Older database without the images table: fall back to no photo
+        # evidence rather than failing the whole match run.
+        hashes = {}
+
+    for item in items:
+        item['image_hash'] = hashes.get(item.get('image_path'))
+
+
 def _fetch_items(cursor, table, limit=MAX_CANDIDATE_ITEMS):
     statuses = _placeholders(OPEN_STATUSES)
     cursor.execute(
@@ -582,7 +751,9 @@ def _fetch_items(cursor, table, limit=MAX_CANDIDATE_ITEMS):
         f'ORDER BY created_at DESC LIMIT {int(limit)}',
         OPEN_STATUSES,
     )
-    return rows_to_dicts(cursor, cursor.fetchall())
+    items = rows_to_dicts(cursor, cursor.fetchall())
+    _attach_image_hashes(cursor, items)
+    return items
 
 
 def _notify(cursor, user_ids, title, message, match_id):
@@ -670,6 +841,7 @@ def find_potential_matches(item_type, item_id, db):
             lost_item = row_to_dict(cursor, cursor.fetchone())
             if not lost_item:
                 return []
+            _attach_image_hashes(cursor, [lost_item])
             candidates_items = _fetch_items(cursor, 'found_items')
             cursor.execute(
                 'SELECT found_item_id FROM matches WHERE lost_item_id = %s',
@@ -686,6 +858,7 @@ def find_potential_matches(item_type, item_id, db):
             found_item = row_to_dict(cursor, cursor.fetchone())
             if not found_item:
                 return []
+            _attach_image_hashes(cursor, [found_item])
             candidates_items = _fetch_items(cursor, 'lost_items')
             cursor.execute(
                 'SELECT lost_item_id FROM matches WHERE found_item_id = %s',

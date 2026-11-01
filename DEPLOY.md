@@ -52,7 +52,7 @@ python create_admin.py
 2. From your Dashboard get: **Cloud Name**, **API Key**, **API Secret**
 3. These become `CLOUDINARY_CLOUD_NAME`, `CLOUDINARY_API_KEY`, `CLOUDINARY_API_SECRET`
 
-Images are processed with Pillow (thumbnail 1200px, RGB, quality 85) and uploaded to Cloudinary. The DB keeps the original path style (`lost/<hex>.jpg`); `/uploads/<path>` 302-redirects to the Cloudinary delivery URL.
+Images are processed with Pillow (EXIF-safe, thumbnail 1200px, white-flattened RGB, quality 85) and stored in MySQL first (`images` table, `LONGBLOB`) - this is what keeps photos alive across Render redeploys. Cloudinary and local disk are best-effort mirrors for the bytes. `/uploads/<path>` serves from the database, then falls back to Cloudinary (pre-existing uploads), then disk.
 
 ## 4. Push Code to GitHub
 
@@ -91,7 +91,7 @@ After deployment:
 - [ ] `/healthz` returns `ok` (200 OK) and `/health` returns `{"status":"ok","service":"FindMe"}`
 - [ ] Register a new account
 - [ ] Login successfully
-- [ ] Report a lost item with an image (uploaded to Cloudinary)
+- [ ] Report a lost item with an image (stored in the DB `images` table)
 - [ ] Report a found item with an image
 - [ ] AI matching runs after item creation (check admin → AI Match Review)
 - [ ] Admin approves/rejects matches
@@ -114,15 +114,18 @@ After deployment:
 - The app refuses to start without a production `SECRET_KEY` and fails loudly on bad DB/Cloudinary settings. Check Render logs.
 
 ### Image Upload Issues
-- Verify Cloudinary credentials; check the free-tier quota. Images are resized to 1200x1200 and quality-85 optimized before upload.
+- Images are resized to 1200x1200 and quality-85 optimized, then stored in the `images` table (`LONGBLOB`). If uploads fail, check the Render logs for `Could not store image bytes in the database` (DB connectivity/quota) - the fallback mirror then goes to Cloudinary/disk.
+- Verify Cloudinary credentials so the mirror (and pre-database images) keep working; check the free-tier quota.
+- Old deployments missing the `images` table are repaired automatically on the first upload/approval; nothing to run by hand.
 
 ### CSRF / Session Errors
 - All POST forms carry a `csrf_token` (Flask-WTF). If you see "session expired" flashes, just retry the form. Cookies are HttpOnly + SameSite=Lax + Secure in production.
 
 ## Notes
 
-- **Ephemeral disk**: production images live on Cloudinary; `static/uploads` is ignored by git (`.gitkeep` keeps the folders).
+- **Ephemeral disk**: production image bytes live in MySQL (`images` table), so redeploys no longer lose photos. Cloudinary remains a mirror and serves images uploaded before this change.
 - **Exports**: office exports (pptx/docx) stream from memory (BytesIO) - nothing written to disk.
 - **ProxyFix**: configured so `request.remote_addr`/scheme are correct behind Render's proxy (activity-log IPs).
 - **PyMySQL**: used instead of Flask-MySQLdb (pure Python, no C deps needed on free hosts).
-- **Local development is unchanged**: with no new env vars, the app uses XAMPP MySQL on localhost and local-disk uploads exactly as before.
+- **Local development is unchanged**: with no new env vars, the app uses XAMPP MySQL on localhost, and images are additionally mirrored to local disk exactly as before.
+- **AI matcher**: identical serial numbers produce a deterministic 100 % match; conflicting serials are hard-rejected. Fuzzy matches need several independent agreeing signals (name, category, colour, brand/model, description, location, date/time, photo perceptual hash, shape) before they are proposed for review.

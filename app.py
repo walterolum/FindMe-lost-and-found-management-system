@@ -24,7 +24,7 @@ logger = logging.getLogger('findme')
 import bcrypt
 from flask import (
     Flask, render_template, request, redirect, url_for,
-    session, flash, jsonify, send_from_directory, abort
+    session, flash, jsonify, send_from_directory, abort, Response
 )
 from flask_wtf.csrf import CSRFProtect, CSRFError
 from flask_limiter import Limiter
@@ -36,6 +36,7 @@ from PIL import Image
 from config import Config, is_production
 from db import get_db, close_db
 from storage import cloudinary_configured, upload_processed_image
+from image_utils import process_upload, JPEG_MIME
 
 app = Flask(__name__)
 app.config.from_object(Config)
@@ -161,6 +162,38 @@ def _ensure_match_schema(db):
                     )
                     logger.info('Added missing notifications.%s column', column)
 
+            # Uploaded image bytes live in the database.  Render's disk is
+            # ephemeral, which is why photos used to disappear after a
+            # redeploy or restart.
+            cursor.execute(
+                "CREATE TABLE IF NOT EXISTS images ("
+                " id INT AUTO_INCREMENT PRIMARY KEY,"
+                " path VARCHAR(512) NOT NULL,"
+                " mime_type VARCHAR(100) NOT NULL DEFAULT 'image/jpeg',"
+                " image_data LONGBLOB NOT NULL,"
+                " sha256 CHAR(64) NULL,"
+                " dhash CHAR(16) NULL,"
+                " created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,"
+                " UNIQUE KEY uq_images_path (path),"
+                " KEY idx_images_sha256 (sha256)"
+                ") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4"
+            )
+            cursor.execute(
+                "SELECT COLUMN_NAME FROM information_schema.COLUMNS "
+                "WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'images'"
+            )
+            image_columns = {str(row[0]).lower() for row in cursor.fetchall()}
+            image_additions = {
+                'mime_type': "VARCHAR(100) NOT NULL DEFAULT 'image/jpeg'",
+                'image_data': 'LONGBLOB NULL',
+                'sha256': 'CHAR(64) NULL',
+                'dhash': 'CHAR(16) NULL',
+            }
+            for column, ddl in image_additions.items():
+                if column not in image_columns:
+                    cursor.execute(f'ALTER TABLE images ADD COLUMN {column} {ddl}')
+                    logger.info('Added missing images.%s column', column)
+
             db.commit()
             _schema_ready = True
         except Exception:
@@ -243,46 +276,89 @@ def _refresh_unread_count(db):
         logger.exception('Could not refresh unread notification count')
 
 
+def _store_image_in_db(path, data, sha256, dhash):
+    """Store processed image bytes in MySQL (the durable source of truth)."""
+    cursor = None
+    try:
+        db = get_db()
+        _ensure_match_schema(db)
+        cursor = db.cursor()
+        cursor.execute(
+            'INSERT INTO images (path, mime_type, image_data, sha256, dhash) '
+            'VALUES (%s, %s, %s, %s, %s)',
+            (path, JPEG_MIME, data, sha256, dhash),
+        )
+        db.commit()
+        return True
+    except Exception:
+        logger.exception('Could not store image bytes in the database (path=%s)', path)
+        try:
+            get_db().rollback()
+        except Exception:
+            pass
+        return False
+    finally:
+        if cursor is not None:
+            try:
+                cursor.close()
+            except Exception:
+                pass
+
+
 def save_image(file, folder=''):
-    """Process an uploaded image and store it.
+    """Process an uploaded image and store it durably.
 
-    Cloudinary (production): Pillow processes exactly as always
-    (thumbnail 1200, RGB, optimize, quality 85), the JPG bytes are uploaded
-    with public_id "<folder>/<hex>" and the same style path string as local
-    ("lost/<hex>.jpg") is returned - so DB values and templates never change.
+    The processed JPEG is written to the ``images`` table first, because
+    Render's local disk is wiped on every deploy/restart.  Cloudinary (when
+    configured) and the local uploads folder are kept as best-effort mirrors
+    so older deployments and direct file access keep working.
 
-    Local fallback (development, no Cloudinary env vars): identical
-    local-disk behaviour to before (static/uploads/<folder>/<hex>.<ext>).
-
-    Returns the stored path string, or None on failure (a failed upload
-    never crashes a report submission).
+    Returns the stored path string ("lost/<hex>.jpg"), or None on failure.
+    A failed upload never crashes a report submission.
     """
     try:
-        img = Image.open(file)
-        img.thumbnail((1200, 1200))
+        img, data, sha256, dhash = process_upload(file)
+    except Exception:
+        logger.exception('Image processing failed (folder=%s)', folder)
+        flash('Sorry, that image could not be read. Use a JPG, PNG or WebP photo.', 'danger')
+        return None
 
-        if img.mode in ('RGBA', 'P'):
-            img = img.convert('RGB')
+    token = secrets.token_hex(16)
+    filename = f'{token}.jpg'
+    path = f'{folder}/{filename}' if folder else filename
 
-        if cloudinary_configured(app.config):
-            token = secrets.token_hex(16)
+    stored_in_db = _store_image_in_db(path, data, sha256, dhash)
+
+    # Mirror to Cloudinary when configured (best effort; never blocks upload).
+    if cloudinary_configured(app.config):
+        try:
             public_id = f'{folder}/{token}' if folder else token
             upload_processed_image(img, public_id, app.config)
-            return f'{public_id}.jpg'
+        except Exception:
+            logger.exception('Cloudinary mirror failed (path=%s)', path)
 
-        # Local disk fallback - unchanged development behaviour
-        ext = file.filename.rsplit('.', 1)[1].lower()
-        filename = secrets.token_hex(16) + '.' + ext
+    # Local mirror for development / emergency fallback (best effort).
+    try:
         subfolder = os.path.join(app.config['UPLOAD_FOLDER'], folder)
         os.makedirs(subfolder, exist_ok=True)
-        img.save(os.path.join(subfolder, filename), optimize=True, quality=85)
-
-        path = os.path.join(folder, filename) if folder else filename
-        return path.replace('\\', '/')
+        with open(os.path.join(subfolder, filename), 'wb') as handle:
+            handle.write(data)
     except Exception:
-        logger.exception('Image upload failed (folder=%s)', folder)
+        logger.exception('Local image mirror failed (path=%s)', path)
+
+    if not stored_in_db:
+        # If the database rejected the image, only keep the path when one of
+        # the mirrors actually succeeded.
+        disk_path = os.path.join(app.config['UPLOAD_FOLDER'], folder, filename)
+        if os.path.isfile(disk_path):
+            logger.warning('Image %s kept on disk only (database unavailable)', path)
+            return path
+        if cloudinary_configured(app.config):
+            return path
         flash('Sorry, your image could not be saved. Please try again.', 'danger')
         return None
+
+    return path
 
 
 def log_activity(user_id, action, description, entity_type=None, entity_id=None):
@@ -2148,21 +2224,62 @@ def admin_reset_data():
 
 # ==================== IMAGE ACCESS ====================
 
+def _safe_image_name(filename):
+    """Normalise an upload path and reject traversal attempts."""
+    name = str(filename or '').replace('\\', '/').lstrip('/')
+    if not name or '..' in name.split('/'):
+        return None
+    return name
+
+
 @app.route('/uploads/<path:filename>')
 def serve_image(filename):
-    """Serve an uploaded image.
+    """Serve an uploaded image from the most durable source available.
 
-    DB values keep the original style ("lost/<hex>.jpg"). When Cloudinary is
-    configured, this redirects to the Cloudinary delivery URL; otherwise the
-    file is served from the local uploads folder (XAMPP development).
+    Order: database (permanent) -> Cloudinary -> local disk.  Database
+    storage is what keeps photos alive after a Render redeploy, while the
+    other two sources keep pre-existing images working.
     """
+    name = _safe_image_name(filename)
+    if not name:
+        abort(404)
+
+    # 1. Database (durable source of truth).
+    try:
+        db = get_db()
+        cursor = db.cursor()
+        cursor.execute(
+            'SELECT image_data, mime_type, sha256 FROM images WHERE path = %s',
+            (name,),
+        )
+        row = cursor.fetchone()
+        cursor.close()
+        if row and row[0]:
+            response = Response(row[0], mimetype=row[1] or JPEG_MIME)
+            if row[2]:
+                response.set_etag(row[2])
+            response.cache_control.public = True
+            response.cache_control.max_age = 31536000  # one year
+            response.cache_control.immutable = True
+            return response.make_conditional(request)
+    except Exception:
+        # A missing images table (older deployment) must not break the page.
+        logger.debug('Database image lookup failed for %s', name, exc_info=True)
+        try:
+            get_db().rollback()
+        except Exception:
+            pass
+
+    # 2. Cloudinary (images uploaded before database storage existed).
     cloud_name = app.config.get('CLOUDINARY_CLOUD_NAME')
     if cloud_name and cloudinary_configured(app.config):
         return redirect(
-            f'https://res.cloudinary.com/{cloud_name}/image/upload/{filename}',
+            f'https://res.cloudinary.com/{cloud_name}/image/upload/{name}',
             code=302,
         )
-    return send_from_directory(app.config['UPLOAD_FOLDER'], filename)
+
+    # 3. Local disk (development and emergency fallback).
+    return send_from_directory(app.config['UPLOAD_FOLDER'], name)
 
 
 @app.errorhandler(413)

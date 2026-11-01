@@ -141,6 +141,20 @@ CREATE TABLE IF NOT EXISTS item_images (
     uploaded_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
+-- Durable image storage. Render's filesystem is ephemeral, so the actual
+-- bytes live here (with Cloudinary / local disk kept as mirrors).
+CREATE TABLE IF NOT EXISTS images (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    path VARCHAR(512) NOT NULL,
+    mime_type VARCHAR(100) NOT NULL DEFAULT 'image/jpeg',
+    image_data LONGBLOB NOT NULL,
+    sha256 CHAR(64),
+    dhash CHAR(16),
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE KEY uq_images_path (path),
+    KEY idx_images_sha256 (sha256)
+);
+
 CREATE TABLE IF NOT EXISTS matches (
     id INT AUTO_INCREMENT PRIMARY KEY,
     lost_item_id INT NOT NULL,

@@ -48,7 +48,8 @@
                         <div class="avatar-upload-section">
                             <div class="avatar-preview" id="avatarPreview">
                                 {% if user[11] %}
-                                    <img src="{{ url_for('serve_image', filename=user[11]) }}" alt="Profile" id="avatarImg">
+                                    <img src="{{ url_for('serve_image', filename=user[11]) }}" alt="Profile" id="avatarImg"
+                                         onerror="this.onerror=null;this.src='{{ url_for('static', filename='img/image-placeholder.svg') }}';">
                                 {% else %}
                                     <div class="avatar-placeholder" id="avatarPlaceholder">
                                         <i class="fas fa-user"></i>

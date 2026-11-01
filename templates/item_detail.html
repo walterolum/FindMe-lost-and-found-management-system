@@ -21,7 +21,8 @@
 
     {% if item[img_idx] %}
     <div class="item-hero-image">
-        <img src="{{ url_for('serve_image', filename=item[img_idx]) }}" alt="{{ item[3] }}">
+        <img src="{{ url_for('serve_image', filename=item[img_idx]) }}" alt="{{ item[3] }}"
+             onerror="this.onerror=null;this.src='{{ url_for('static', filename='img/image-placeholder.svg') }}';">
     </div>
     {% endif %}
 

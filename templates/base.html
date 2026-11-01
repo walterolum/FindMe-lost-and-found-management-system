@@ -36,7 +36,8 @@
         <div class="sidebar-user">
             <div class="user-avatar">
                 {% if session.get('profile_image') %}
-                    <img src="{{ url_for('serve_image', filename=session.profile_image) }}" alt="Profile" class="avatar-img">
+                    <img src="{{ url_for('serve_image', filename=session.profile_image) }}" alt="Profile" class="avatar-img"
+                         onerror="this.onerror=null;this.src='{{ url_for('static', filename='img/image-placeholder.svg') }}';">
                 {% else %}
                     {{ session.full_name[0] if session.full_name else 'U' }}
                 {% endif %}

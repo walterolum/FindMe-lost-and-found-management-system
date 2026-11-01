@@ -38,7 +38,8 @@
                 <div class="match-compare-label lost-label"><i class="fas fa-triangle-exclamation"></i> Lost Item</div>
                 {% if m[19] %}
                 <div class="match-compare-image">
-                    <img src="{{ url_for('serve_image', filename=m[19]) }}" alt="{{ m[13] }}">
+                    <img src="{{ url_for('serve_image', filename=m[19]) }}" alt="{{ m[13] }}"
+                         onerror="this.onerror=null;this.src='{{ url_for('static', filename='img/image-placeholder.svg') }}';">
                 </div>
                 {% else %}
                 <div class="match-compare-image no-image"><i class="fas fa-image"></i><span>No Image</span></div>
@@ -60,7 +61,8 @@
                 <div class="match-compare-label found-label"><i class="fas fa-magnifying-glass"></i> Found Item</div>
                 {% if m[27] %}
                 <div class="match-compare-image">
-                    <img src="{{ url_for('serve_image', filename=m[27]) }}" alt="{{ m[21] }}">
+                    <img src="{{ url_for('serve_image', filename=m[27]) }}" alt="{{ m[21] }}"
+                         onerror="this.onerror=null;this.src='{{ url_for('static', filename='img/image-placeholder.svg') }}';">
                 </div>
                 {% else %}
                 <div class="match-compare-image no-image"><i class="fas fa-image"></i><span>No Image</span></div>
