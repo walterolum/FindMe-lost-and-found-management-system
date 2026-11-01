@@ -8,7 +8,8 @@
     <link rel="icon" type="image/svg+xml" href="{{ url_for('static', filename='img/favicon.svg') }}">
     <link rel="icon" type="image/png" sizes="32x32" href="{{ url_for('static', filename='img/favicon-32.png') }}">
     <link rel="apple-touch-icon" href="{{ url_for('static', filename='img/apple-touch-icon.png') }}">
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}?v=20261102b">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}?v=20261103a">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/glass.css') }}?v=20261103a">
     <link rel="preconnect" href="https://cdnjs.cloudflare.com" crossorigin>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -18,7 +19,7 @@
     <script>
         (function(){
             var t=localStorage.getItem('findme-theme');
-            if(!t) t=window.matchMedia('(prefers-color-scheme:dark)').matches?'dark':'light';
+            if(!t) t='dark';
             document.documentElement.setAttribute('data-theme',t);
         })();
     </script>
@@ -174,12 +175,10 @@
     </section>
 
     <!-- CTA Section -->
-    <section class="section" style="background: var(--neutral-900); color: white; text-align: center; padding: var(--space-16) var(--space-4);">
+    <section class="section section-cta">
         <div class="container">
-            <h2 style="font-size: var(--text-3xl); margin-bottom: var(--space-4); color: white;">Ready to Find Your Lost Items?</h2>
-            <p style="font-size: var(--text-lg); opacity: 0.85; margin-bottom: var(--space-8); max-width: 600px; margin-left: auto; margin-right: auto; color: rgba(255,255,255,0.85);">
-                Join the Cavendish University community and let our AI help you recover your belongings.
-            </p>
+            <h2>Ready to Find Your Lost Items?</h2>
+            <p>Join the Cavendish University community and let our AI help you recover your belongings.</p>
             <div class="hero-actions" style="justify-content: center;">
                 <a href="{{ url_for('register') }}" class="btn btn-light btn-lg">Get Started Free</a>
                 <a href="{{ url_for('about') }}" class="btn btn-outline-light btn-lg">Learn More</a>

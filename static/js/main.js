@@ -12,7 +12,7 @@
     function getPreferredTheme() {
         var stored = localStorage.getItem(THEME_KEY);
         if (stored) return stored;
-        return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+        return 'dark';
     }
 
     function setTheme(theme) {
