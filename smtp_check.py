@@ -37,6 +37,16 @@ def main():
         print(f'\nNot configured: fill in {", ".join(missing)} in the .env file, then run this again.')
         return 1
 
+    # Example values from the docs are not real credentials.
+    examples = {'yourname@gmail.com', 'your.address@gmail.com', 'abcdefghijklmnop',
+                'qwerasdfzxcvtyui', 'your-16-char-app-password'}
+    copied = [k for k, v in (('SMTP_USER', Config.SMTP_USER), ('SMTP_PASSWORD', Config.SMTP_PASSWORD),
+                             ('SMTP_FROM', Config.SMTP_FROM)) if (v or '').strip().lower() in examples]
+    if copied:
+        print(f'\n{", ".join(copied)} still has an example value from the instructions.')
+        print('Replace it with your real Gmail address / the App Password Google generated for you.')
+        return 1
+
     port = int(Config.SMTP_PORT or 587)
     mode = Config.SMTP_SECURE if Config.SMTP_SECURE in ('ssl', 'starttls') else ('ssl' if port == 465 else 'starttls')
     print(f'\nConnecting to {Config.SMTP_HOST}:{port} ({mode}) ...')
@@ -58,12 +68,17 @@ def main():
     try:
         server.login(Config.SMTP_USER, Config.SMTP_PASSWORD)
         print('Login OK.')
-    except smtplib.SMTPAuthenticationError:
-        print('Login refused by the mail server.')
+    except (smtplib.SMTPAuthenticationError, smtplib.SMTPServerDisconnected):
+        # Gmail answers "535 Username and Password not accepted" and then drops
+        # the connection, so a disconnect here also means a refused login.
+        print('Login refused by the mail server (username or password not accepted).')
         print('For Gmail: SMTP_PASSWORD must be a 16-character App Password '
               '(https://myaccount.google.com/apppasswords), not your normal password, '
               'and 2-Step Verification must be on.')
-        server.quit()
+        try:
+            server.quit()
+        except smtplib.SMTPException:
+            pass  # Gmail has usually closed the connection already
         return 1
 
     # Send through the app's own mailer so this tests the real code path.
