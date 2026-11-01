@@ -29,7 +29,11 @@
                     <tr><th>Full Name</th><td><strong>{{ user[1] }}</strong></td></tr>
                     <tr><th>Email</th><td>{{ user[2] }}</td></tr>
                     <tr><th>Phone</th><td>{{ user[3] or 'N/A' }}</td></tr>
-                    <tr><th>Student/Staff ID</th><td>{{ user[4] or 'N/A' }}</td></tr>
+                    {% if user[6] == 2 %}
+                    <tr><th>University Email</th><td>{{ user[14] or 'N/A' }}</td></tr>
+                    {% elif user[6] == 1 %}
+                    <tr><th>Student ID</th><td>{{ user[4] or 'N/A' }}</td></tr>
+                    {% endif %}
                     <tr><th>Role</th><td><span class="badge badge-info">{{ role_name }}</span></td></tr>
                     <tr><th>Faculty</th><td>{{ faculty_map.get(user[7], 'N/A') }}</td></tr>
                     <tr><th>Course/Program</th><td>{{ course_map.get(user[8], 'N/A') }}</td></tr>
@@ -67,6 +71,7 @@
                         <input type="hidden" name="full_name" value="{{ user[1] }}">
                         <input type="hidden" name="phone" value="{{ user[3] or '' }}">
                         <input type="hidden" name="student_staff_id" value="{{ user[4] or '' }}">
+                        <input type="hidden" name="university_email" value="{{ user[14] or '' }}">
                         <div class="avatar-submit" id="avatarSubmit" style="display:none;">
                             <button type="submit" class="btn btn-accent btn-sm">
                                 <i class="fas fa-floppy-disk"></i> Save Photo
@@ -92,10 +97,17 @@
                             <label for="phone">Phone</label>
                             <input type="text" id="phone" name="phone" value="{{ user[3] or '' }}">
                         </div>
+                        {% if user[6] == 2 %}
                         <div class="form-group">
-                            <label for="student_staff_id">Student/Staff ID</label>
-                            <input type="text" id="student_staff_id" name="student_staff_id" value="{{ user[4] or '' }}">
+                            <label for="university_email">University Email</label>
+                            <input type="text" id="university_email" name="university_email" value="{{ user[14] or '' }}" placeholder="e.g. lecturer@cavendish.ac.ug">
                         </div>
+                        {% elif user[6] == 1 %}
+                        <div class="form-group">
+                            <label for="student_staff_id">Student ID</label>
+                            <input type="text" id="student_staff_id" name="student_staff_id" value="{{ user[4] or '' }}" placeholder="e.g. STU-2024-001">
+                        </div>
+                        {% endif %}
                         <div style="display:flex;gap:var(--space-3);flex-wrap:wrap;">
                             <button type="submit" class="btn btn-accent">
                                 <i class="fas fa-floppy-disk"></i> Update Profile

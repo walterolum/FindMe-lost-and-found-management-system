@@ -8,12 +8,28 @@ INSERT IGNORE INTO roles (id, name, description) VALUES
 (2, 'Lecturer', 'University lecturer or staff'),
 (3, 'Administrator', 'System administrator');
 
-INSERT IGNORE INTO faculties (id, name, description) VALUES
-(1, 'Faculty of Computing and Information Technology', 'Computing and IT programs'),
-(2, 'Faculty of Business and Management', 'Business and management programs'),
-(3, 'Faculty of Health Sciences', 'Health sciences programs'),
-(4, 'Faculty of Engineering', 'Engineering programs'),
-(5, 'Faculty of Arts and Social Sciences', 'Arts and social sciences programs');
+-- University campuses (re-runnable: keeps rows in sync on existing DBs).
+-- Cavendish University Uganda has four branches:
+--   Main Campus (Siyani)  -> Faculty of Science and Technology
+--   Acacia Campus         -> Faculty of Law
+--   Kingsgate Campus      -> Faculty of Business and Management
+--   Mukono Campus         -> Faculty of Health Sciences
+INSERT INTO campuses (id, name, description) VALUES
+(1, 'Main Campus (Siyani)', 'Main university campus - Faculty of Science and Technology'),
+(2, 'Acacia Campus', 'Acacia campus - Faculty of Law'),
+(3, 'Kingsgate Campus', 'Kingsgate campus - Faculty of Business and Management'),
+(4, 'Mukono Campus', 'Mukono campus - Health related courses')
+ON DUPLICATE KEY UPDATE name = VALUES(name), description = VALUES(description);
+
+INSERT INTO faculties (id, name, description, campus_id) VALUES
+(1, 'Faculty of Science and Technology', 'Computing, IT and technology programs - Main Campus (Siyani)', 1),
+(2, 'Faculty of Business and Management', 'Business and management programs - Kingsgate', 3),
+(3, 'Faculty of Health Sciences', 'Health related courses - Mukono', 4),
+(4, 'Faculty of Engineering', 'Engineering programs - Main Campus (Siyani)', 1),
+(5, 'Faculty of Arts and Social Sciences', 'Arts and social sciences programs - Main Campus (Siyani)', 1),
+(6, 'Faculty of Law', 'Law programs - Acacia', 2)
+ON DUPLICATE KEY UPDATE
+name = VALUES(name), description = VALUES(description), campus_id = VALUES(campus_id);
 
 INSERT IGNORE INTO courses (id, name, code, faculty_id) VALUES
 (1, 'Bachelor of Science in Computer Science', 'BSCS', 1),
@@ -23,7 +39,10 @@ INSERT IGNORE INTO courses (id, name, code, faculty_id) VALUES
 (5, 'Bachelor of Engineering in Software Engineering', 'BSE', 4),
 (6, 'Bachelor of Arts in Communication', 'BAComm', 5),
 (7, 'Diploma in Business Administration', 'DBA', 2),
-(8, 'Certificate in IT', 'CIT', 1);
+(8, 'Certificate in IT', 'CIT', 1),
+(9, 'Bachelor of Laws', 'LLB', 6),
+(10, 'Bachelor of Public Health', 'BPH', 3),
+(11, 'Bachelor of Business Computing', 'BBC', 2);
 
 INSERT IGNORE INTO categories (id, name, description) VALUES
 (1, 'Electronics', 'Electronic devices and accessories'),
@@ -61,3 +80,13 @@ INSERT IGNORE INTO users (id, full_name, email, phone, student_staff_id, passwor
 (3, 'Sarah Nakamya', 'sarah.nakamya@cavendish.ac.ug', '+256770200003', 'STU-2024002', '$2b$12$oJQujYMVUdV5cWv3uMHSZ.5qi0uXqotg0iSuPY1rnoKJGc6s7kwK6', 1, 1, 2, TRUE, TRUE),
 (4, 'Dr. Peter Okello', 'peter.okello@cavendish.ac.ug', '+256770300004', 'LCT-001', '$2b$12$oJQujYMVUdV5cWv3uMHSZ.5qi0uXqotg0iSuPY1rnoKJGc6s7kwK6', 2, NULL, NULL, TRUE, TRUE),
 (5, 'Grace Tumusiime', 'grace.tumusiime@cavendish.ac.ug', '+256770400005', 'STU-2024003', '$2b$12$oJQujYMVUdV5cWv3uMHSZ.5qi0uXqotg0iSuPY1rnoKJGc6s7kwK6', 1, 2, 3, TRUE, TRUE);
+
+-- Campus/faculty sync for databases that already have the seed rows.
+UPDATE faculties
+SET campus_id = CASE id WHEN 2 THEN 3 WHEN 3 THEN 4 ELSE 1 END
+WHERE id IN (2, 3, 4, 5) AND campus_id IS NULL;
+
+-- Lecturers are identified by their university email, not a student ID.
+UPDATE users SET student_staff_id = NULL WHERE role_id = 2 AND student_staff_id IS NOT NULL;
+UPDATE users SET university_email = 'peter.okello@cavendish.ac.ug'
+WHERE id = 4 AND university_email IS NULL;

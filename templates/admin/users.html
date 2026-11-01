@@ -25,7 +25,7 @@
                 {% for user in users %}
                 <tr data-label="User: {{ user[1] }}">
                     <td><strong>{{ user[1] }}</strong></td>
-                    <td>{{ user[2] }}</td>
+                    <td>{{ user[2] }}{% if user[7] == 'Lecturer' and user[10] %}<br><small style="color:var(--text-muted);"><i class="fas fa-envelope"></i> {{ user[10] }}</small>{% endif %}</td>
                     <td>{{ user[3] or 'N/A' }}</td>
                     <td><span class="badge badge-info">{{ user[7] }}</span></td>
                     <td>{{ user[8] or 'N/A' }}</td>

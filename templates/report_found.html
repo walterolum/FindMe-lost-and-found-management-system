@@ -27,8 +27,8 @@
                     <input type="text" id="phone" name="phone" value="{{ session.get('phone', '') }}" readonly>
                 </div>
                 <div class="form-group">
-                    <label for="student_staff_id">Student/Staff ID</label>
-                    <input type="text" id="student_staff_id" name="student_staff_id" value="{{ session.get('student_staff_id', '') }}" readonly>
+                    <label for="student_staff_id">{{ 'University Email (Lecturer/Staff)' if session.get('role_id') == 2 else 'Student ID' }}</label>
+                    <input type="text" id="student_staff_id" name="student_staff_id" value="{{ (session.get('university_email') or '') if session.get('role_id') == 2 else (session.get('student_staff_id') or '') }}" readonly>
                 </div>
             </div>
         </div>

@@ -72,22 +72,16 @@
                 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                 <div class="form-section" style="background:transparent;border:none;padding:0;box-shadow:none;">
                     <h3 class="form-section-title"><i class="fas fa-user"></i> Personal Information</h3>
-                    <div class="form-grid-2">
-                        <div class="form-group">
-                            <label for="full_name">Full Name</label>
-                            <input type="text" id="full_name" name="full_name" placeholder="John Doe" required>
-                        </div>
-                        <div class="form-group">
-<label for="student_id" style="color:#1e40af;">Student ID (optional)</label>
-                             <input type="text" id="student_id" name="student_id" placeholder="e.g. 123-456" style="border-color:#1e40af;" onfocus="this.style.borderColor='#1e40af';this.style.boxShadow='0 0 0 3px rgba(30,64,175,0.12)'" onblur="this.style.borderColor='';this.style.boxShadow=''">
-                        </div>
+                    <div class="form-group">
+                        <label for="full_name">Full Name</label>
+                        <input type="text" id="full_name" name="full_name" placeholder="John Doe" required>
                     </div>
                 </div>
 
                 <div class="form-section" style="background:transparent;border:none;padding:0;box-shadow:none;">
                     <h3 class="form-section-title"><i class="fas fa-envelope"></i> Account Details</h3>
                     <div class="form-group">
-                        <label for="email">University Email</label>
+                        <label for="email">Email</label>
                         <input type="email" id="email" name="email" placeholder="you@cavendish.ac.ug" required>
                     </div>
                     <div class="form-grid-2">
@@ -106,34 +100,45 @@
                     <h3 class="form-section-title"><i class="fas fa-graduation-cap"></i> Academic Information</h3>
                     <div class="form-group">
                         <label>I am a</label>
-                        <div style="display:flex;gap:var(--space-4);">
+                        <div style="display:flex;gap:var(--space-4);flex-wrap:wrap;">
                             <label style="display:flex;align-items:center;gap:8px;cursor:pointer;">
-                                <input type="radio" name="user_type" value="Student" checked style="width:auto;"> Student
+                                <input type="radio" name="user_type" value="Student" checked style="width:auto;" onchange="applyRegisterRole()"> Student
                             </label>
                             <label style="display:flex;align-items:center;gap:8px;cursor:pointer;">
-                                <input type="radio" name="user_type" value="Lecturer" style="width:auto;"> Lecturer/Staff
+                                <input type="radio" name="user_type" value="Lecturer" style="width:auto;" onchange="applyRegisterRole()"> Lecturer/Staff
                             </label>
                         </div>
                     </div>
-                    <div class="form-grid-2">
-                        <div class="form-group">
-                            <label for="faculty_id">Faculty</label>
-                            <select id="faculty_id" name="faculty_id">
-                                <option value="">-- Select Faculty --</option>
-                                {% for f in faculties %}
-                                <option value="{{ f[0] }}">{{ f[1] }}</option>
+                    <div class="form-group" id="field_student_id">
+                        <label for="student_id">Student ID</label>
+                        <input type="text" id="student_id" name="student_id" placeholder="e.g. STU-2024-001">
+                    </div>
+                    <div class="form-group" id="field_university_email" style="display:none;">
+                        <label for="university_email">University Email</label>
+                        <input type="email" id="university_email" name="university_email" placeholder="e.g. lecturer@cavendish.ac.ug">
+                        <small style="color:var(--text-muted);">Required for lecturers/staff - used to identify you instead of a student ID.</small>
+                    </div>
+                    <div class="form-group">
+                        <label for="faculty_id">Faculty</label>
+                        <select id="faculty_id" name="faculty_id">
+                            <option value="">-- Select Faculty --</option>
+                            {% for campus, campus_faculties in faculties | groupby('campus') %}
+                            <optgroup label="{{ campus or 'Other Campuses' }}">
+                                {% for f in campus_faculties %}
+                                <option value="{{ f.id }}">{{ f.name }}</option>
                                 {% endfor %}
-                            </select>
-                        </div>
-                        <div class="form-group">
-                            <label for="course_id">Course/Program</label>
-                            <select id="course_id" name="course_id">
-                                <option value="">-- Select Course --</option>
-                                {% for c in courses %}
-                                <option value="{{ c[0] }}">{{ c[1] }}</option>
-                                {% endfor %}
-                            </select>
-                        </div>
+                            </optgroup>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="course_id">Course/Program</label>
+                        <select id="course_id" name="course_id">
+                            <option value="">-- Select Course --</option>
+                            {% for c in courses %}
+                            <option value="{{ c[0] }}">{{ c[1] }}</option>
+                            {% endfor %}
+                        </select>
                     </div>
                 </div>
 
@@ -164,6 +169,25 @@
             </div>
         </div>
     </div>
+
+    <script>
+    // Role-aware registration: students identify with a Student ID,
+    // lecturers/staff with their university email.
+    function applyRegisterRole() {
+        var isLecturer = document.querySelector('input[name="user_type"]:checked').value === 'Lecturer';
+        var studentField = document.getElementById('field_student_id');
+        var emailField = document.getElementById('field_university_email');
+        var studentInput = document.getElementById('student_id');
+        var emailInput = document.getElementById('university_email');
+        studentField.style.display = isLecturer ? 'none' : '';
+        emailField.style.display = isLecturer ? '' : 'none';
+        studentInput.disabled = isLecturer;
+        emailInput.disabled = !isLecturer;
+        // Clear the hidden field so a switch never leaves stale data behind.
+        if (isLecturer) { studentInput.value = ''; } else { emailInput.value = ''; }
+    }
+    applyRegisterRole();
+    </script>
 
     <script src="{{ url_for('static', filename='js/main.js') }}"></script>
 </body>

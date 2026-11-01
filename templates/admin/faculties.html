@@ -15,6 +15,15 @@
                 <input type="text" name="name" placeholder="e.g. Faculty of Computing" required>
             </div>
             <div class="form-group">
+                <label>Campus</label>
+                <select name="campus_id">
+                    <option value="">-- Select Campus --</option>
+                    {% for c in campuses %}
+                    <option value="{{ c[0] }}" {{ 'selected' if c[0] == 1 }}>{{ c[1] }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="form-group">
                 <label>Description</label>
                 <input type="text" name="description" placeholder="Optional description">
             </div>
@@ -25,11 +34,11 @@
     {% if faculties %}
     <div class="table-responsive">
         <table class="table">
-            <thead><tr><th>ID</th><th>Name</th><th>Description</th><th>Status</th><th>Actions</th></tr></thead>
+            <thead><tr><th>ID</th><th>Name</th><th>Campus</th><th>Description</th><th>Status</th><th>Actions</th></tr></thead>
             <tbody>
                 {% for f in faculties %}
                 <tr data-label="Faculty: {{ f[1] }}">
-                    <td>{{ f[0] }}</td><td><strong>{{ f[1] }}</strong></td><td>{{ f[2] or 'N/A' }}</td>
+                    <td>{{ f[0] }}</td><td><strong>{{ f[1] }}</strong></td><td>{{ f[7] or 'N/A' }}</td><td>{{ f[2] or 'N/A' }}</td>
                     <td><span class="badge badge-{{ 'active' if f[3] else 'inactive' }}">{{ 'Active' if f[3] else 'Inactive' }}</span></td>
                     <td>
                         <form method="POST" action="{{ url_for('admin_toggle_faculty', faculty_id=f[0]) }}" style="display:inline;">

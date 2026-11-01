@@ -194,6 +194,37 @@ def _ensure_match_schema(db):
                     cursor.execute(f'ALTER TABLE images ADD COLUMN {column} {ddl}')
                     logger.info('Added missing images.%s column', column)
 
+            # Campuses, faculty-campus links and lecturer university emails
+            # (role-aware registration).
+            cursor.execute(
+                "CREATE TABLE IF NOT EXISTS campuses ("
+                " id INT AUTO_INCREMENT PRIMARY KEY,"
+                " name VARCHAR(100) NOT NULL,"
+                " description VARCHAR(255) NULL,"
+                " is_active BOOLEAN DEFAULT TRUE,"
+                " created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,"
+                " updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP"
+                ") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4"
+            )
+
+            def _column_exists(table, column):
+                cursor.execute(
+                    "SELECT COUNT(*) FROM information_schema.COLUMNS "
+                    "WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = %s "
+                    "AND COLUMN_NAME = %s",
+                    (table, column),
+                )
+                return bool(cursor.fetchone()[0])
+
+            if not _column_exists('faculties', 'campus_id'):
+                cursor.execute('ALTER TABLE faculties ADD COLUMN campus_id INT NULL')
+                logger.info('Added missing faculties.campus_id column')
+            if not _column_exists('users', 'university_email'):
+                cursor.execute(
+                    'ALTER TABLE users ADD COLUMN university_email VARCHAR(150) NULL'
+                )
+                logger.info('Added missing users.university_email column')
+
             db.commit()
             _schema_ready = True
         except Exception:
@@ -545,9 +576,11 @@ def login():
         password = request.form.get('password', '')
 
         db = get_db()
+        # Repair role-aware columns on older databases before the SELECT.
+        _ensure_match_schema(db)
         cursor = db.cursor()
         cursor.execute(
-            'SELECT id, full_name, email, password_hash, role_id, is_active, student_staff_id, phone, faculty_id, course_id, profile_image FROM users WHERE email = %s',
+            'SELECT id, full_name, email, password_hash, role_id, is_active, student_staff_id, phone, faculty_id, course_id, profile_image, university_email FROM users WHERE email = %s',
             (email,)
         )
         user = cursor.fetchone()
@@ -569,6 +602,7 @@ def login():
             session['faculty_id'] = user[8]
             session['course_id'] = user[9]
             session['profile_image'] = user[10]
+            session['university_email'] = user[11]
 
             log_activity(user[0], 'login', 'User logged in')
             flash('Welcome back!', 'success')
@@ -583,9 +617,20 @@ def login():
 @limiter.limit('5/minute', methods=['POST'])
 def register():
     db = get_db()
+    # Ensure the campuses table and role-aware columns exist on older
+    # databases before the registration form is rendered.
+    _ensure_match_schema(db)
     cursor = db.cursor()
-    cursor.execute('SELECT id, name FROM faculties WHERE is_active = TRUE ORDER BY name')
-    faculties = cursor.fetchall()
+    cursor.execute(
+        'SELECT f.id, f.name, COALESCE(c.name, \'\') AS campus_name '
+        'FROM faculties f LEFT JOIN campuses c ON f.campus_id = c.id '
+        'WHERE f.is_active = TRUE '
+        'ORDER BY COALESCE(c.id, 99), f.name'
+    )
+    faculties = [
+        {'id': row[0], 'name': row[1], 'campus': row[2]}
+        for row in cursor.fetchall()
+    ]
     cursor.execute('SELECT id, name FROM courses WHERE is_active = TRUE ORDER BY name')
     courses = cursor.fetchall()
     cursor.close()
@@ -594,15 +639,24 @@ def register():
         full_name = request.form.get('full_name', '').strip()
         email = request.form.get('email', '').strip()
         phone = request.form.get('phone', '').strip()
-        student_staff_id = request.form.get('student_id', '').strip() or request.form.get('student_staff_id', '').strip()
         password = request.form.get('password', '')
         confirm_password = request.form.get('confirm_password', '')
         role_name = request.form.get('user_type', 'Student')
         faculty_id = request.form.get('faculty_id')
         course_id = request.form.get('course_id')
+        # Students are identified by their Student ID, lecturers/staff by
+        # their university email - the form only submits the visible field.
+        student_staff_id = request.form.get('student_id', '').strip()
+        university_email = request.form.get('university_email', '').strip().lower()
 
         if role_name not in ('Student', 'Lecturer'):
             role_name = 'Student'
+        is_lecturer = role_name == 'Lecturer'
+
+        if is_lecturer:
+            student_staff_id = None
+        else:
+            university_email = None
 
         if password != confirm_password:
             flash('Passwords do not match.', 'danger')
@@ -610,6 +664,10 @@ def register():
 
         if len(password) < 6:
             flash('Password must be at least 6 characters.', 'danger')
+            return render_template('register.html', faculties=faculties, courses=courses)
+
+        if is_lecturer and not university_email:
+            flash('University email is required for lecturers/staff.', 'danger')
             return render_template('register.html', faculties=faculties, courses=courses)
 
         cursor2 = db.cursor()
@@ -639,14 +697,18 @@ def register():
             flash('Phone number is too long (maximum 20 characters).', 'danger')
             cursor2.close()
             return render_template('register.html', faculties=faculties, courses=courses)
-        if len(student_staff_id) > 50:
-            flash('Student/Staff ID is too long (maximum 50 characters).', 'danger')
+        if student_staff_id and len(student_staff_id) > 50:
+            flash('Student ID is too long (maximum 50 characters).', 'danger')
+            cursor2.close()
+            return render_template('register.html', faculties=faculties, courses=courses)
+        if university_email and len(university_email) > 150:
+            flash('University email is too long (maximum 150 characters).', 'danger')
             cursor2.close()
             return render_template('register.html', faculties=faculties, courses=courses)
 
         cursor2.execute(
-            'INSERT INTO users (full_name, email, phone, student_staff_id, password_hash, role_id, faculty_id, course_id) VALUES (%s, %s, %s, %s, %s, %s, %s, %s)',
-            (full_name, email, phone, student_staff_id, password_hash, role_id, faculty_id or None, course_id or None)
+            'INSERT INTO users (full_name, email, phone, student_staff_id, university_email, password_hash, role_id, faculty_id, course_id) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)',
+            (full_name, email, phone, student_staff_id, university_email, password_hash, role_id, faculty_id or None, course_id or None)
         )
         db.commit()
         user_id = cursor2.lastrowid
@@ -745,6 +807,7 @@ def profile():
 @login_required
 def settings():
     db = get_db()
+    _ensure_match_schema(db)
     cursor = db.cursor()
     cursor.execute('SELECT * FROM users WHERE id = %s', (session['user_id'],))
     user = cursor.fetchone()
@@ -753,6 +816,7 @@ def settings():
         full_name = request.form.get('full_name', '').strip()
         phone = request.form.get('phone', '').strip()
         student_staff_id = request.form.get('student_staff_id', '').strip()
+        university_email = request.form.get('university_email', '').strip().lower()
 
         # Column length checks: friendly message instead of a MySQL
         # "Data too long" crash (500). Run before the avatar upload so a
@@ -764,7 +828,10 @@ def settings():
             flash('Phone number is too long (maximum 20 characters).', 'danger')
             return redirect(url_for('settings'))
         if len(student_staff_id) > 50:
-            flash('Student/Staff ID is too long (maximum 50 characters).', 'danger')
+            flash('Student ID is too long (maximum 50 characters).', 'danger')
+            return redirect(url_for('settings'))
+        if len(university_email) > 150:
+            flash('University email is too long (maximum 150 characters).', 'danger')
             return redirect(url_for('settings'))
 
         profile_image = request.files.get('profile_image')
@@ -787,13 +854,14 @@ def settings():
                 image_path = uploaded  # keep the previous avatar if upload failed
 
         cursor.execute(
-            'UPDATE users SET full_name = %s, phone = %s, student_staff_id = %s, profile_image = %s WHERE id = %s',
-            (full_name, phone, student_staff_id, image_path, session['user_id'])
+            'UPDATE users SET full_name = %s, phone = %s, student_staff_id = %s, university_email = %s, profile_image = %s WHERE id = %s',
+            (full_name, phone, student_staff_id or None, university_email or None, image_path, session['user_id'])
         )
         db.commit()
         session['full_name'] = full_name
         session['phone'] = phone
-        session['student_staff_id'] = student_staff_id
+        session['student_staff_id'] = student_staff_id or None
+        session['university_email'] = university_email or None
         session['profile_image'] = image_path
 
         log_activity(session['user_id'], 'profile_update', 'Updated profile')
@@ -1411,7 +1479,7 @@ def admin_users():
     db = get_db()
     cursor = db.cursor()
     base = '''SELECT u.id, u.full_name, u.email, u.phone, u.student_staff_id, u.is_active, u.created_at, 
-               r.name as role_name, f.name as faculty_name, c.name as course_name 
+               r.name as role_name, f.name as faculty_name, c.name as course_name, u.university_email 
         FROM users u 
         JOIN roles r ON u.role_id = r.id 
         LEFT JOIN faculties f ON u.faculty_id = f.id 
@@ -1511,26 +1579,34 @@ def admin_delete_user(user_id):
 @admin_required
 def admin_faculties():
     db = get_db()
+    _ensure_match_schema(db)
     cursor = db.cursor()
 
     if request.method == 'POST':
         name = request.form.get('name', '').strip()
         description = request.form.get('description', '').strip()
+        campus_id = request.form.get('campus_id')
         if name:
             cursor.execute(
-                'INSERT INTO faculties (name, description) VALUES (%s, %s)',
-                (name, description or None)
+                'INSERT INTO faculties (name, description, campus_id) VALUES (%s, %s, %s)',
+                (name, description or None, campus_id or None)
             )
             db.commit()
             log_activity(session['user_id'], 'add_faculty', f'Added faculty: {name}')
             flash('Faculty added successfully.', 'success')
             return redirect(url_for('admin_faculties'))
 
-    cursor.execute('SELECT * FROM faculties ORDER BY created_at DESC')
+    cursor.execute(
+        'SELECT f.*, c.name AS campus_name FROM faculties f '
+        'LEFT JOIN campuses c ON f.campus_id = c.id '
+        'ORDER BY COALESCE(c.id, 99), f.name'
+    )
     faculties = cursor.fetchall()
+    cursor.execute('SELECT * FROM campuses WHERE is_active = TRUE ORDER BY id')
+    campuses = cursor.fetchall()
     cursor.close()
 
-    return render_template('admin/faculties.html', faculties=faculties)
+    return render_template('admin/faculties.html', faculties=faculties, campuses=campuses)
 
 
 @app.route('/admin/faculties/<int:faculty_id>/toggle', methods=['POST'])

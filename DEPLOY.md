@@ -34,12 +34,18 @@ export MYSQL_SSL_CA=ca.pem
 python init_db.py
 ```
 
-This runs `schema.sql` (all tables are `IF NOT EXISTS`) and `seed.sql` (`INSERT IGNORE` - safe to re-run).
+This runs `schema.sql` (all tables are `IF NOT EXISTS`) and `seed.sql` (`INSERT IGNORE` - safe to re-run). Campuses/faculties and the lecturer university email use `INSERT ... ON DUPLICATE KEY UPDATE`, so re-running `seed.sql` syncs names and campus assignments on existing databases too.
 
 **Existing database?** Widen the image columns once:
 ```bash
 mysql -h your-host.aivencloud.com -u avnadmin -p --ssl-ca=ca.pem defaultdb < migration_widen_image_paths.sql
 ```
+
+**Role-aware registration (Student ID vs lecturer University Email) and the 4 Cavendish campuses (Main Campus (Siyani), Acacia, Kingsgate, Mukono):** the missing columns/tables (`users.university_email`, `faculties.campus_id`, `campuses`) are created automatically on the first login/register/settings/admin page - the only manual step is re-running the updated `seed.sql` to load the campus rows:
+```bash
+mysql -h your-host.aivencloud.com -u avnadmin -p --ssl-ca=ca.pem defaultdb < seed.sql
+```
+Until the seed runs, the faculty dropdown degrades gracefully (groups faculties under "Other Campuses"). Students register with a Student ID; lecturers/staff register with their university email (required).
 
 **Create a real admin** (never use the demo password in production):
 ```bash
@@ -89,7 +95,8 @@ Start command (in the Dockerfile): `gunicorn wsgi:app --workers 1 --threads 4 --
 
 After deployment:
 - [ ] `/healthz` returns `ok` (200 OK) and `/health` returns `{"status":"ok","service":"FindMe"}`
-- [ ] Register a new account
+- [ ] Register a new account (student: Student ID field; lecturer: University Email field required)
+- [ ] Faculty dropdown shows the 4 campus groups (Main Campus (Siyani), Acacia, Kingsgate, Mukono)
 - [ ] Login successfully
 - [ ] Report a lost item with an image (stored in the DB `images` table)
 - [ ] Report a found item with an image
