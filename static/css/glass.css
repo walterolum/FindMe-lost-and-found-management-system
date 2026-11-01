@@ -1,19 +1,19 @@
 /* ═══════════════════════════════════════════════════════════
    FindMe — Glass theme
-   Loaded after style.css. A blurred Cavendish campus photo sits
-   fixed behind every page; panels are frosted glass on top of it.
-   Text and controls stay fully sharp.
+   Loaded after style.css. A lightly softened Cavendish campus photo
+   sits fixed behind every page; panels are frosted glass on top.
+   Palette: Cavendish blue, grey and silver. Text stays fully sharp.
    ═══════════════════════════════════════════════════════════ */
 
 /* ── Light glass tokens ── */
 :root,
 [data-theme="light"] {
     --glass-wash:
-        radial-gradient(60% 55% at 85% 20%, rgba(168, 85, 247, 0.22) 0%, transparent 70%),
-        radial-gradient(55% 50% at 10% 85%, rgba(56, 189, 248, 0.20) 0%, transparent 70%),
-        linear-gradient(160deg, rgba(241, 245, 255, 0.70) 0%, rgba(226, 232, 255, 0.60) 55%, rgba(237, 233, 254, 0.68) 100%);
-    --glass-fallback: #e8ecfb;
-    --glass-blur: blur(22px) saturate(1.6);
+        radial-gradient(60% 55% at 85% 15%, rgba(30, 79, 168, 0.18) 0%, transparent 70%),
+        radial-gradient(55% 50% at 10% 85%, rgba(148, 163, 184, 0.22) 0%, transparent 70%),
+        linear-gradient(160deg, rgba(241, 245, 249, 0.62) 0%, rgba(226, 232, 240, 0.50) 55%, rgba(203, 213, 225, 0.58) 100%);
+    --glass-fallback: #e2e8f0;
+    --glass-blur: blur(16px) saturate(1.3);
     --glass-edge: inset 0 1px 0 rgba(255, 255, 255, 0.85);
 
     --bg-body: transparent;
@@ -34,12 +34,12 @@
     --border: rgba(255, 255, 255, 0.75);
     --border-light: rgba(15, 23, 42, 0.06);
 
-    --shadow-card: 0 1px 0 rgba(255, 255, 255, 0.8) inset, 0 8px 28px rgba(30, 41, 99, 0.10);
-    --shadow-card-hover: 0 1px 0 rgba(255, 255, 255, 0.9) inset, 0 16px 40px rgba(30, 41, 99, 0.16);
-    --shadow-3d: 0 1px 0 rgba(255, 255, 255, 0.8) inset, 0 18px 50px rgba(30, 41, 99, 0.16);
+    --shadow-card: 0 1px 0 rgba(255, 255, 255, 0.8) inset, 0 8px 28px rgba(15, 37, 80, 0.10);
+    --shadow-card-hover: 0 1px 0 rgba(255, 255, 255, 0.9) inset, 0 16px 40px rgba(15, 37, 80, 0.16);
+    --shadow-3d: 0 1px 0 rgba(255, 255, 255, 0.8) inset, 0 18px 50px rgba(15, 37, 80, 0.16);
 
     /* Sidebar stays a deep glass in both themes, like the reference */
-    --sidebar-bg: rgba(15, 23, 62, 0.52);
+    --sidebar-bg: rgba(10, 37, 80, 0.62);
     --sidebar-bg-hover: rgba(255, 255, 255, 0.10);
     --sidebar-active-bg: rgba(255, 255, 255, 0.16);
     --sidebar-border: rgba(255, 255, 255, 0.18);
@@ -50,12 +50,11 @@
 /* ── Dark glass tokens (the signature look) ── */
 [data-theme="dark"] {
     --glass-wash:
-        radial-gradient(55% 60% at 88% 35%, rgba(192, 38, 211, 0.30) 0%, transparent 70%),
-        radial-gradient(50% 55% at 8% 80%, rgba(34, 211, 238, 0.20) 0%, transparent 70%),
-        radial-gradient(60% 60% at 30% 10%, rgba(59, 130, 246, 0.28) 0%, transparent 70%),
-        linear-gradient(160deg, rgba(5, 8, 32, 0.66) 0%, rgba(23, 20, 82, 0.50) 50%, rgba(46, 16, 101, 0.62) 100%);
-    --glass-fallback: #0b0b2e;
-    --glass-blur: blur(24px) saturate(1.5);
+        radial-gradient(55% 60% at 88% 30%, rgba(203, 213, 225, 0.10) 0%, transparent 70%),
+        radial-gradient(60% 60% at 25% 10%, rgba(37, 99, 235, 0.22) 0%, transparent 70%),
+        linear-gradient(160deg, rgba(6, 18, 42, 0.62) 0%, rgba(12, 37, 80, 0.42) 50%, rgba(30, 41, 59, 0.58) 100%);
+    --glass-fallback: #0a1a33;
+    --glass-blur: blur(16px) saturate(1.2);
     --glass-edge: inset 0 1px 0 rgba(255, 255, 255, 0.16);
 
     --bg-body: transparent;
@@ -63,15 +62,15 @@
     --bg-secondary: rgba(255, 255, 255, 0.05);
     --bg-tertiary: rgba(255, 255, 255, 0.10);
     --surface: rgba(255, 255, 255, 0.08);
-    --surface-elevated: rgba(30, 27, 80, 0.94);
-    --surface-glass: rgba(18, 18, 58, 0.45);
+    --surface-elevated: rgba(15, 32, 62, 0.95);
+    --surface-glass: rgba(10, 26, 51, 0.48);
     --gradient-card: linear-gradient(155deg, rgba(255, 255, 255, 0.13) 0%, rgba(255, 255, 255, 0.05) 100%);
     --gradient-surface: var(--gradient-card);
 
     --text-primary: #f8fafc;
     --text-secondary: #dbe2f0;
-    --text-muted: #aeb8d0;
-    --text-faint: #8a93b0;
+    --text-muted: #b6c0cf;
+    --text-faint: #8f9aab;
 
     --border: rgba(255, 255, 255, 0.16);
     --border-light: rgba(255, 255, 255, 0.08);
@@ -107,9 +106,7 @@ body {
 }
 :root body::before {
     z-index: -2;
-    background: url('../img/cavendish-bg-blur.jpg') 50% 35% / cover no-repeat;
-    filter: blur(6px);
-    transform: scale(1.06); /* hide soft blur edges */
+    background: url('../img/cavendish-bg.jpg') 50% 35% / cover no-repeat;
 }
 :root body::after {
     z-index: -1;
@@ -200,7 +197,7 @@ hr,
 }
 [data-theme="light"] .dash-card-header,
 :root:not([data-theme]) .dash-card-header {
-    border-image: linear-gradient(90deg, transparent, rgba(30, 41, 99, 0.16), transparent) 1;
+    border-image: linear-gradient(90deg, transparent, rgba(15, 37, 80, 0.16), transparent) 1;
 }
 
 /* ── Sidebar ── */
@@ -214,8 +211,8 @@ hr,
 .sidebar-nav a.active {
     box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.18), 0 4px 14px rgba(2, 6, 23, 0.2);
 }
-.sidebar-nav a.active::before { background: #a5b4fc; box-shadow: 0 0 12px rgba(165, 180, 252, 0.8); }
-.sidebar-nav a.active i { color: #c7d2fe; }
+.sidebar-nav a.active::before { background: #e2e8f0; box-shadow: 0 0 12px rgba(226, 232, 240, 0.8); }
+.sidebar-nav a.active i { color: #e2e8f0; }
 .sidebar-user,
 .sidebar-footer,
 .sidebar-brand { border-color: var(--sidebar-border) !important; }
@@ -244,25 +241,25 @@ hr,
 .form-group select:focus,
 .form-group textarea:focus {
     background: var(--bg-tertiary);
-    border-color: rgba(129, 140, 248, 0.9);
-    box-shadow: 0 0 0 4px rgba(129, 140, 248, 0.22);
+    border-color: rgba(59, 130, 246, 0.85);
+    box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.22);
 }
-[data-theme="dark"] select option { background: #1e1b4b; color: #f8fafc; }
+[data-theme="dark"] select option { background: #0f203e; color: #f8fafc; }
 
 /* ── Buttons ── */
 .btn { border-radius: 12px; }
 .btn-primary,
 .btn-accent,
 .btn-nav {
-    background: linear-gradient(135deg, #4f7cff 0%, #6d5bf6 55%, #9b4dff 100%);
+    background: linear-gradient(135deg, #2f6fdb 0%, #1e4fa8 55%, #0f3577 100%);
     border-color: transparent;
-    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.25), 0 8px 22px rgba(91, 80, 246, 0.35);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.25), 0 8px 22px rgba(30, 79, 168, 0.35);
 }
 .btn-primary:hover,
 .btn-accent:hover,
 .btn-nav:hover {
     filter: brightness(1.07);
-    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.3), 0 12px 28px rgba(91, 80, 246, 0.45);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.3), 0 12px 28px rgba(30, 79, 168, 0.45);
 }
 .btn-secondary,
 .btn-outline,
@@ -285,7 +282,7 @@ hr,
 /* ── Footer ── */
 .footer,
 [data-theme="dark"] .footer {
-    background: rgba(8, 10, 36, 0.55);
+    background: rgba(10, 26, 51, 0.62);
     border-top: 1px solid rgba(255, 255, 255, 0.12);
     color: rgba(226, 232, 240, 0.75);
 }
@@ -296,8 +293,8 @@ hr,
 /* Hero: let the blurred campus show through with a deeper tint */
 .hero {
     background:
-        linear-gradient(180deg, rgba(8, 10, 40, 0.10) 0%, rgba(8, 10, 40, 0.0) 60%, rgba(8, 10, 40, 0.25) 100%),
-        radial-gradient(70% 60% at 50% 50%, rgba(8, 10, 40, 0.45) 0%, rgba(8, 10, 40, 0.10) 100%);
+        linear-gradient(180deg, rgba(6, 18, 42, 0.15) 0%, rgba(6, 18, 42, 0.0) 60%, rgba(6, 18, 42, 0.30) 100%),
+        radial-gradient(70% 60% at 50% 50%, rgba(6, 18, 42, 0.50) 0%, rgba(6, 18, 42, 0.15) 100%);
 }
 .hero::before,
 .hero::after { display: none; }
@@ -312,7 +309,7 @@ hr,
     padding: var(--space-12) var(--space-6);
     border-radius: 28px;
     color: #fff;
-    background: linear-gradient(135deg, rgba(15, 18, 64, 0.72), rgba(76, 29, 149, 0.55));
+    background: linear-gradient(135deg, rgba(10, 37, 80, 0.78), rgba(51, 65, 85, 0.62));
     border: 1px solid rgba(255, 255, 255, 0.18);
     box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.18), 0 24px 60px rgba(2, 6, 23, 0.35);
 }
@@ -327,7 +324,7 @@ hr,
 /* Auth pages: two glass panes over the campus */
 .auth-page { background: var(--glass-fallback); }
 .auth-left {
-    background: linear-gradient(150deg, rgba(10, 14, 48, 0.62) 0%, rgba(49, 46, 129, 0.42) 55%, rgba(126, 34, 206, 0.36) 100%);
+    background: linear-gradient(150deg, rgba(6, 18, 42, 0.66) 0%, rgba(12, 37, 80, 0.48) 55%, rgba(51, 65, 85, 0.45) 100%);
     border-right: 1px solid rgba(255, 255, 255, 0.14);
 }
 .auth-left::before,
@@ -345,10 +342,10 @@ hr,
 }
 
 /* ── Links readable on dark glass ── */
-:where([data-theme="dark"]) a { color: #a5b4fc; }
-:where([data-theme="dark"]) a:hover { color: #c7d2fe; }
+:where([data-theme="dark"]) a { color: #93c5fd; }
+:where([data-theme="dark"]) a:hover { color: #dbeafe; }
 [data-theme="dark"] .link-accent,
-[data-theme="dark"] .auth-switch a { color: #a5b4fc; }
+[data-theme="dark"] .auth-switch a { color: #93c5fd; }
 
 /* ── Dashboard clocks ── */
 .dash-clock {
@@ -370,19 +367,19 @@ hr,
         -webkit-backdrop-filter: var(--glass-blur);
         backdrop-filter: var(--glass-blur);
     }
-    .sidebar { background: rgba(15, 18, 58, 0.82); }
+    .sidebar { background: rgba(10, 30, 62, 0.88); }
 }
 
 /* ── Browsers without backdrop-filter: make glass more solid ── */
 @supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
     :root, [data-theme="light"] { --gradient-card: rgba(255, 255, 255, 0.94); --surface-glass: rgba(255, 255, 255, 0.94); }
-    [data-theme="dark"] { --gradient-card: rgba(26, 24, 72, 0.92); --surface-glass: rgba(18, 18, 58, 0.92); --sidebar-bg: rgba(18, 18, 58, 0.95); }
+    [data-theme="dark"] { --gradient-card: rgba(17, 34, 64, 0.92); --surface-glass: rgba(10, 26, 51, 0.92); --sidebar-bg: rgba(10, 30, 62, 0.95); }
 }
 
 /* ── Respect reduced transparency ── */
 @media (prefers-reduced-transparency: reduce) {
     :root, [data-theme="light"] { --gradient-card: rgba(255, 255, 255, 0.97); }
-    [data-theme="dark"] { --gradient-card: rgba(26, 24, 72, 0.96); --sidebar-bg: rgba(18, 18, 58, 0.97); }
+    [data-theme="dark"] { --gradient-card: rgba(17, 34, 64, 0.96); --sidebar-bg: rgba(10, 30, 62, 0.97); }
 }
 
 /* ── Print: plain paper ── */
@@ -395,5 +392,43 @@ hr,
 [data-theme="dark"] .welcome-bar h1 i,
 [data-theme="dark"] .dash-card-header i,
 [data-theme="dark"] .form-section-title i,
-[data-theme="dark"] .page-header h1 i { color: #a5b4fc; }
-[data-theme="dark"] .dash-clock-badge { color: #e9d5ff; background: rgba(168, 85, 247, 0.25); }
+[data-theme="dark"] .page-header h1 i { color: #93c5fd; }
+[data-theme="dark"] .dash-clock-badge { color: #e2e8f0; background: rgba(148, 163, 184, 0.25); }
+
+/* ═══════════════════════════════════════════════════════════
+   CAVENDISH PALETTE: the old violet accent becomes grey / silver
+   everywhere (badges, icons, pagination, clock)
+   ═══════════════════════════════════════════════════════════ */
+:root,
+[data-theme="light"] {
+    --accent-50: #f1f5f9;
+    --accent-100: #e2e8f0;
+    --accent-400: #94a3b8;
+    --accent-500: #64748b;
+    --accent-600: #475569;
+    --accent: #475569;
+    --text-on-accent: #ffffff;
+    --gradient-accent: linear-gradient(135deg, #64748b, #334155);
+    --gradient-primary: linear-gradient(135deg, #2f6fdb, #1e4fa8);
+    --shadow-glow-accent: 0 0 20px rgba(100, 116, 139, 0.2);
+}
+[data-theme="dark"] {
+    --accent-50: rgba(203, 213, 225, 0.12);
+    --accent-100: rgba(203, 213, 225, 0.22);
+    --accent-400: #cbd5e1;
+    --accent-500: #b6c0cf;
+    --accent-600: #e2e8f0;
+    --accent: #cbd5e1;
+    --text-on-accent: #0b1730;
+    --gradient-accent: linear-gradient(135deg, #94a3b8, #64748b);
+    --gradient-primary: linear-gradient(135deg, #2f6fdb, #1e4fa8);
+    --shadow-glow-accent: 0 0 24px rgba(203, 213, 225, 0.18);
+}
+.dash-clock-badge { color: var(--accent-600); background: var(--accent-100); }
+
+/* Silver headline accent on the home hero */
+.hero-title .gradient-text {
+    background: linear-gradient(135deg, #e2e8f0 0%, #ffffff 45%, #93c5fd 100%);
+    -webkit-background-clip: text;
+    background-clip: text;
+}
