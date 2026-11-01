@@ -83,11 +83,13 @@ git push origin main
 | CLOUDINARY_CLOUD_NAME | your-cloud-name | From Cloudinary |
 | CLOUDINARY_API_KEY | your-api-key | From Cloudinary |
 | CLOUDINARY_API_SECRET | your-api-secret | From Cloudinary |
-| SMTP_HOST | smtp.gmail.com | Optional - enables live owner emails (match PDF reports) |
-| SMTP_PORT | 587 | 587 STARTTLS or 465 SSL |
-| SMTP_USER | you@gmail.com | SMTP login (Gmail: use an App Password) |
-| SMTP_PASSWORD | app-password | SMTP password |
-| SMTP_FROM | you@gmail.com | The From: address shown to owners |
+| SMTP_HOST | smtp-relay.brevo.com | Set by render.yaml - enables live owner emails (match PDF reports) |
+| SMTP_PORT | 2525 | Set by render.yaml - Render's free plan blocks 25/465/587 |
+| SMTP_USER | your Brevo SMTP login | Brevo -> SMTP & API -> SMTP tab ("Login", looks like `xxxx@smtp-brevo.com`) |
+| SMTP_PASSWORD | your Brevo SMTP key | Brevo -> SMTP & API -> SMTP tab -> "Generate a new SMTP key" |
+| SMTP_FROM | you@gmail.com | The From: address owners see - must be a verified sender in Brevo |
+
+**Email on Render's free plan:** since September 2025 Render blocks outbound SMTP ports 25, 465 and 587 on free web services, so Gmail SMTP cannot work there (it only listens on 465/587). Use a free [Brevo](https://www.brevo.com) account (300 emails/day) on port 2525 as above. Locally, Gmail with an App Password on port 587 works fine (`.env`). On a paid Render instance, Gmail on 587 works too. Test any settings with `python smtp_check.py you@example.com`.
 
 Already set by render.yaml (no action needed): `FINDME_ENV=production`, `MYSQL_DB=defaultdb`, `MYSQL_SSL_CA=ca.pem`, `MYSQL_PORT=3306`.
 
