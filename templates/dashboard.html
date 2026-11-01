@@ -9,6 +9,14 @@
             <p>Here's what's happening with your lost &amp; found items today.</p>
         </div>
         <div class="welcome-actions">
+            <div class="dash-clock" id="dashClock">
+                <div class="dash-clock-top">
+                    <span class="dash-clock-greet"><i class="fas fa-sun"></i><span id="clockGreet">Hi</span></span>
+                    <span class="dash-clock-badge">Live</span>
+                </div>
+                <div class="dash-clock-time" id="clockTime">--:--<small id="clockSec">--</small></div>
+                <div class="dash-clock-date" id="clockDate"></div>
+            </div>
             <a href="{{ url_for('report_lost') }}" class="btn btn-danger">
                 <i class="fas fa-triangle-exclamation"></i> Report Lost Item
             </a>
@@ -182,4 +190,31 @@
         </div>
     </div>
 </div>
+
+<script>
+    // Modern live clock (dashboards): time, seconds, date and greeting.
+    (function () {
+        var t = document.getElementById('clockTime'),
+            s = document.getElementById('clockSec'),
+            d = document.getElementById('clockDate'),
+            g = document.getElementById('clockGreet'),
+            gi = document.querySelector('.dash-clock-greet i');
+        if (!t) return;
+        function tick() {
+            var now = new Date();
+            var h = now.getHours();
+            t.firstChild.nodeValue =
+                String(h % 12 || 12).padStart(2, '0') + ':' + String(now.getMinutes()).padStart(2, '0');
+            s.textContent = ' ' + (h >= 12 ? 'PM' : 'AM');
+            d.textContent = now.toLocaleDateString(undefined, { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+            var greet = h < 12 ? 'Good morning' : (h < 17 ? 'Good afternoon' : 'Good evening');
+            if (g.textContent !== greet) {
+                g.textContent = greet;
+                gi.className = 'fas ' + (h < 12 ? 'fa-sun' : (h < 17 ? 'fa-sun' : 'fa-moon'));
+            }
+        }
+        tick();
+        setInterval(tick, 1000);
+    })();
+</script>
 {% endblock %}

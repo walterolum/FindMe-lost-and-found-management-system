@@ -92,7 +92,7 @@
     <div class="match-actions" style="justify-content:center; margin-top:var(--space-6);">
         <form method="POST" action="{{ url_for('admin_approve_match', match_id=match[0]) }}">
             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-            <button type="submit" class="btn btn-success btn-lg" onclick="return confirm('Approve this match?')">
+            <button type="submit" class="btn btn-success btn-lg" onclick="return confirm('Approve this match? The owner will immediately receive the match report PDF by email.')">
                 <i class="fas fa-check"></i> Approve Match
             </button>
         </form>
@@ -102,6 +102,22 @@
                 <i class="fas fa-xmark"></i> Reject Match
             </button>
         </form>
+    </div>
+    {% endif %}
+
+    {% if session.get('role_name') == 'Administrator' or (session.get('role_id') in (1, 2)) %}
+    <div class="match-pdf-bar">
+        {% if session.get('role_name') == 'Administrator' %}
+        <form method="POST" action="{{ url_for('admin_send_match_pdf', match_id=match[0]) }}">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <button type="submit" class="btn btn-accent" title="Generate the match report PDF and email it to the owner with one click">
+                <i class="fas fa-file-pdf"></i> Email Report PDF to Owner (one click)
+            </button>
+        </form>
+        {% endif %}
+        <a href="{{ url_for('match_pdf_download', match_id=match[0]) }}" class="btn btn-outline">
+            <i class="fas fa-download"></i> Download Report PDF
+        </a>
     </div>
     {% endif %}
 </div>

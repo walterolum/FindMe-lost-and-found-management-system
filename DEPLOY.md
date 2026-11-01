@@ -83,8 +83,15 @@ git push origin main
 | CLOUDINARY_CLOUD_NAME | your-cloud-name | From Cloudinary |
 | CLOUDINARY_API_KEY | your-api-key | From Cloudinary |
 | CLOUDINARY_API_SECRET | your-api-secret | From Cloudinary |
+| SMTP_HOST | smtp.gmail.com | Optional - enables live owner emails (match PDF reports) |
+| SMTP_PORT | 587 | 587 STARTTLS or 465 SSL |
+| SMTP_USER | you@gmail.com | SMTP login (Gmail: use an App Password) |
+| SMTP_PASSWORD | app-password | SMTP password |
+| SMTP_FROM | you@gmail.com | The From: address shown to owners |
 
 Already set by render.yaml (no action needed): `FINDME_ENV=production`, `MYSQL_DB=defaultdb`, `MYSQL_SSL_CA=ca.pem`, `MYSQL_PORT=3306`.
+
+**Without SMTP**, owner emails fall back to the server log (console mailbox) and match report PDFs stay downloadable: admins get a one-click **"Email PDF to Owner"** button plus **"Download PDF"** on every match, and owners/finder can download the same PDF from the match detail page.
 
 4. Deploy - the app **fails loudly at startup** if required values are missing (check the logs for the exact variable name).
 5. Render gives you a public URL (e.g. `https://findme-xxx.onrender.com`).
@@ -97,10 +104,13 @@ After deployment:
 - [ ] `/healthz` returns `ok` (200 OK) and `/health` returns `{"status":"ok","service":"FindMe"}`
 - [ ] Register a new account (student: Student ID field; lecturer: University Email field required)
 - [ ] Faculty dropdown shows the 4 campus groups (Main Campus (Siyani), Acacia, Kingsgate, Mukono)
+- [ ] Dashboard shows the live clock (time, date, greeting)
+- [ ] Report a lost/found item with auto-detected GPS location (address chip fills)
 - [ ] Login successfully
 - [ ] Report a lost item with an image (stored in the DB `images` table)
 - [ ] Report a found item with an image
 - [ ] AI matching runs after item creation (check admin → AI Match Review)
+- [ ] Approving a match emails the match report PDF to the owner (or logs the console email + offers the one-click "Email PDF to Owner" when SMTP is unset)
 - [ ] Admin approves/rejects matches
 - [ ] Notifications appear correctly
 - [ ] Profile image upload works (5 MB limit)
@@ -118,6 +128,12 @@ After deployment:
 - `MYSQL_SSL_CA=ca.pem` must point to the real Aiven CA file (downloaded, not invented). Local XAMPP needs no CA - SSL is skipped for localhost.
 
 ### Missing Environment Variables
+
+### GPS Auto-Detect (report pages)
+The lost/found report forms detect the user's current location with the browser Geolocation API (HTTPS required - true on Render) and attach the reverse-geocoded address (OpenStreetMap Nominatim) plus lat/lng to the report. Users must grant permission; if they deny it or are offline the manual campus-location dropdown keeps working and nothing breaks. Verified reports show the detected address on the item details page and in the match report PDF.
+
+### Match PDF Reports
+Approving a match automatically generates a one-page A4 PDF (compare lost vs found items, locations/dates, contacts, owner instructions) and emails it to the owner and finder (best-effort). Admins can also re-send it with one click from AI Match Review or Match Details. PDFs are generated on the fly with `fpdf2` - nothing is stored on disk.
 - The app refuses to start without a production `SECRET_KEY` and fails loudly on bad DB/Cloudinary settings. Check Render logs.
 
 ### Image Upload Issues

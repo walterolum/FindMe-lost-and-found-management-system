@@ -122,6 +122,19 @@
                 <input type="text" id="current_location" name="current_location" placeholder="Where is the item currently kept?">
             </div>
             <div class="form-group">
+                <label><i class="fas fa-location-crosshairs"></i> My Current Location (auto-detected)</label>
+                <div class="geo-detect">
+                    <button type="button" class="btn btn-sm btn-outline" id="geoDetectBtn">
+                        <i class="fas fa-location-dot"></i> <span id="geoBtnLabel">Detect my location</span>
+                    </button>
+                    <span id="geoStatus" class="geo-status"><i class="fas fa-compass"></i> Not detected yet</span>
+                </div>
+                <input type="text" id="detected_location" name="detected_location" readonly
+                       placeholder="Your current address is detected automatically (you can still choose a campus location above)">
+                <input type="hidden" id="location_lat" name="location_lat">
+                <input type="hidden" id="location_lng" name="location_lng">
+            </div>
+            <div class="form-group">
                 <label for="additional_details">Additional Details</label>
                 <textarea id="additional_details" name="additional_details" rows="3" placeholder="Any other identifying information"></textarea>
             </div>
@@ -146,4 +159,82 @@
         </button>
     </form>
 </div>
+
+<script>
+    // GPS auto-detect: reverse-geocode the browser location via OpenStreetMap
+    // (Nominatim) and attach it to the report. Best effort - manual campus
+    // selection keeps working when permission is denied or offline.
+    (function () {
+        var btn = document.getElementById('geoDetectBtn'),
+            label = document.getElementById('geoBtnLabel'),
+            status = document.getElementById('geoStatus'),
+            out = document.getElementById('detected_location'),
+            latIn = document.getElementById('location_lat'),
+            lngIn = document.getElementById('location_lng');
+        if (!btn) return;
+
+        function setStatus(kind, text, icon) {
+            status.className = 'geo-status geo-' + kind;
+            status.innerHTML = '<i class="fas fa-' + icon + '"></i> ' + text;
+        }
+
+        function reverseGeocode(lat, lng) {
+            var coords = lat.toFixed(5) + ', ' + lng.toFixed(5);
+            fetch('https://nominatim.openstreetmap.org/reverse?format=jsonv2&zoom=18&addressdetails=1&lat=' + lat + '&lon=' + lng)
+                .then(function (r) { return r.ok ? r.json() : null; })
+                .then(function (j) {
+                    var addr = j && (j.display_name || '');
+                    if (!addr) addr = coords;
+                    else addr = coords + ' | ' + addr;
+                    out.value = addr.length > 255 ? addr.slice(0, 255) : addr;
+                    setStatus('ok', 'Location detected', 'circle-check');
+                    label.textContent = 'Re-detect location';
+                    btn.disabled = false;
+                })
+                .catch(function () {
+                    out.value = coords;
+                    setStatus('ok', 'Location detected (coordinates only)', 'circle-check');
+                    label.textContent = 'Re-detect location';
+                    btn.disabled = false;
+                });
+        }
+
+        function detect() {
+            if (!navigator.geolocation) {
+                setStatus('warn', 'Geolocation is not supported by this browser', 'circle-exclamation');
+                return;
+            }
+            btn.disabled = true;
+            label.textContent = 'Detecting...';
+            setStatus('loading', 'Finding your current location...', 'compass fa-spin');
+            navigator.geolocation.getCurrentPosition(
+                function (pos) {
+                    var lat = pos.coords.latitude, lng = pos.coords.longitude;
+                    latIn.value = lat; lngIn.value = lng;
+                    reverseGeocode(lat, lng);
+                },
+                function (err) {
+                    btn.disabled = false;
+                    label.textContent = 'Detect my location';
+                    var msgs = {
+                        1: 'Permission denied - choose your campus location manually',
+                        2: 'Location unavailable - try again',
+                        3: 'Timed out - try again'
+                    };
+                    setStatus('warn', msgs[err.code] || err.message, 'circle-exclamation');
+                },
+                { enableHighAccuracy: true, timeout: 12000, maximumAge: 30000 }
+            );
+        }
+
+        btn.addEventListener('click', detect);
+
+        // Auto-detect when permission was already granted (no prompt surprise).
+        if (navigator.permissions && navigator.permissions.query) {
+            navigator.permissions.query({ name: 'geolocation' }).then(function (p) {
+                if (p.state === 'granted') detect();
+            }).catch(function () { /* Safari/Firefox may reject before load: ignore */ });
+        }
+    })();
+</script>
 {% endblock %}

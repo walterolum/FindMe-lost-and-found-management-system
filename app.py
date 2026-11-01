@@ -225,6 +225,20 @@ def _ensure_match_schema(db):
                 )
                 logger.info('Added missing users.university_email column')
 
+            # GPS auto-detected locations on lost/found reports (appended at
+            # the table end so existing positional indexes stay stable).
+            for _geo_table in ('lost_items', 'found_items'):
+                for _geo_col, _geo_ddl in (
+                    ('detected_location', 'VARCHAR(255) NULL'),
+                    ('location_lat', 'DECIMAL(10,8) NULL'),
+                    ('location_lng', 'DECIMAL(11,8) NULL'),
+                ):
+                    if not _column_exists(_geo_table, _geo_col):
+                        cursor.execute(
+                            f'ALTER TABLE {_geo_table} ADD COLUMN {_geo_col} {_geo_ddl}'
+                        )
+                        logger.info('Added missing %s.%s column', _geo_table, _geo_col)
+
             db.commit()
             _schema_ready = True
         except Exception:
@@ -875,11 +889,13 @@ def settings():
     courses = cursor.fetchall()
     role_name = get_role_name(user[6]) if user else 'Unknown'
     is_admin = session.get('role_name') == 'Administrator'
+    email_backend = 'SMTP (live email)' if Config.smtp_configured() else 'Console log (set SMTP_* env vars for live email)'
     cursor.close()
 
     return render_template(
         'settings.html', user=user, faculties=faculties,
-        courses=courses, role_name=role_name, is_admin=is_admin
+        courses=courses, role_name=role_name, is_admin=is_admin,
+        email_backend=email_backend
     )
 
 
@@ -970,6 +986,29 @@ def dashboard():
     )
 
 
+# ==================== GPS AUTO-DETECT ====================
+
+def _parse_geo_fields():
+    """Read the GPS auto-detect fields from a lost/found report form.
+
+    The browser Geolocation API fills detected_location (reverse-geocoded
+    address or raw coordinates) plus optional numeric lat/lng. Unparseable
+    or empty values are simply dropped (None) - never crash a report.
+    """
+    def _num(raw):
+        try:
+            if raw is None or str(raw).strip() == '':
+                return None
+            return float(str(raw).strip())
+        except (TypeError, ValueError):
+            return None
+
+    detected = (request.form.get('detected_location', '') or '').strip()
+    if len(detected) > 255:
+        detected = detected[:255]
+    return (detected or None, _num(request.form.get('location_lat')), _num(request.form.get('location_lng')))
+
+
 # ==================== REPORT LOST ITEM ====================
 
 @app.route('/report-lost', methods=['GET', 'POST'])
@@ -995,6 +1034,7 @@ def report_lost():
         if not item_name or not date_lost:
             flash('Item name and date lost are required.', 'danger')
             db = get_db()
+            _ensure_match_schema(db)
             cursor = db.cursor()
             cursor.execute('SELECT id, name FROM categories WHERE is_active = TRUE ORDER BY name')
             categories = cursor.fetchall()
@@ -1018,17 +1058,21 @@ def report_lost():
             approx_value = None
 
         db = get_db()
+        _ensure_match_schema(db)
+        detected_location, location_lat, location_lng = _parse_geo_fields()
         cursor = db.cursor()
         cursor.execute(
             """INSERT INTO lost_items
             (reference, reporter_id, item_name, category_id, brand, model, color, shape,
              serial_number, unique_marks, description, approximate_value, date_lost, time_lost, location_id,
-             location_detail, additional_details, image_path, shape_data, status)
-            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, 'reported')""",
+             location_detail, additional_details, image_path, shape_data, status,
+             detected_location, location_lat, location_lng)
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, 'reported', %s, %s, %s)""",
             (reference, session['user_id'], item_name, category_id or None, brand, model, color,
              shape or None, serial_number or None, unique_marks or None, description or None,
              approx_value, date_lost, time_lost or None,
-             location_id or None, location_detail or None, additional_details or None, image_path, None)
+             location_id or None, location_detail or None, additional_details or None, image_path, None,
+             detected_location, location_lat, location_lng)
         )
         db.commit()
         item_id = cursor.lastrowid
@@ -1056,6 +1100,7 @@ def report_lost():
         return redirect(url_for('my_reports'))
 
     db = get_db()
+    _ensure_match_schema(db)
     cursor = db.cursor()
     cursor.execute('SELECT id, name FROM categories WHERE is_active = TRUE ORDER BY name')
     categories = cursor.fetchall()
@@ -1092,6 +1137,7 @@ def report_found():
         if not item_name or not date_found:
             flash('Item name and date found are required.', 'danger')
             db = get_db()
+            _ensure_match_schema(db)
             cursor = db.cursor()
             cursor.execute('SELECT id, name FROM categories WHERE is_active = TRUE ORDER BY name')
             categories = cursor.fetchall()
@@ -1115,17 +1161,21 @@ def report_found():
             approx_value = None
 
         db = get_db()
+        _ensure_match_schema(db)
+        detected_location, location_lat, location_lng = _parse_geo_fields()
         cursor = db.cursor()
         cursor.execute(
             """INSERT INTO found_items
             (reference, finder_id, item_name, category_id, brand, model, color, shape,
              serial_number, unique_marks, approximate_value, description,
-             date_found, time_found, location_id, location_detail, current_location, additional_details, image_path, shape_data, status)
-            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, 'reported')""",
+             date_found, time_found, location_id, location_detail, current_location, additional_details, image_path, shape_data, status,
+             detected_location, location_lat, location_lng)
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, 'reported', %s, %s, %s)""",
             (reference, session['user_id'], item_name, category_id or None, brand, model, color,
              shape or None, serial_number or None, unique_marks or None, approx_value,
              description or None, date_found, time_found or None, location_id or None,
-             location_detail or None, current_location or None, additional_details or None, image_path, None)
+             location_detail or None, current_location or None, additional_details or None, image_path, None,
+             detected_location, location_lat, location_lng)
         )
         db.commit()
         item_id = cursor.lastrowid
@@ -1152,6 +1202,7 @@ def report_found():
         return redirect(url_for('my_reports'))
 
     db = get_db()
+    _ensure_match_schema(db)
     cursor = db.cursor()
     cursor.execute('SELECT id, name FROM categories WHERE is_active = TRUE ORDER BY name')
     categories = cursor.fetchall()
@@ -1378,6 +1429,164 @@ def match_detail(match_id):
         abort(404)
 
     return render_template('match_detail.html', match=match)
+
+
+# ==================== MATCH PDF REPORT ====================
+
+def _load_match_pdf_data(db, match_id):
+    """Load everything the PDF needs for one match (dict row, or None)."""
+    from pymysql.cursors import DictCursor
+
+    cursor = db.cursor(DictCursor)
+    cursor.execute(
+        '''
+        SELECT m.id AS match_id, m.confidence_score AS score,
+               m.match_level AS confidence_level, m.status AS status,
+               m.explanation AS explanation, m.created_at AS matched_at,
+               li.reference AS lost_ref, li.item_name AS lost_name,
+               li.brand AS lost_brand, li.model AS lost_model,
+               li.color AS lost_color, li.shape AS lost_shape,
+               li.serial_number AS lost_serial, li.unique_marks AS lost_marks,
+               li.approximate_value AS lost_value, li.description AS lost_desc,
+               li.date_lost AS lost_date, li.time_lost AS lost_time,
+               li.location_detail AS lost_location_detail,
+               li.detected_location AS lost_detected,
+               li.location_lat AS lost_lat, li.location_lng AS lost_lng,
+               fi.reference AS found_ref, fi.item_name AS found_name,
+               fi.brand AS found_brand, fi.model AS found_model,
+               fi.color AS found_color, fi.shape AS found_shape,
+               fi.serial_number AS found_serial, fi.unique_marks AS found_marks,
+               fi.approximate_value AS found_value, fi.description AS found_desc,
+               fi.date_found AS found_date, fi.time_found AS found_time,
+               fi.location_detail AS found_location_detail,
+               fi.detected_location AS found_detected,
+               fi.location_lat AS found_lat, fi.location_lng AS found_lng,
+               u1.full_name AS owner_name, u1.email AS owner_email, u1.phone AS owner_phone,
+               u2.full_name AS finder_name, u2.email AS finder_email, u2.phone AS finder_phone,
+               c1.name AS lost_category, c2.name AS found_category,
+               l1.name AS lost_location, l2.name AS found_location
+        FROM matches m
+        JOIN lost_items li ON m.lost_item_id = li.id
+        JOIN found_items fi ON m.found_item_id = fi.id
+        LEFT JOIN users u1 ON li.reporter_id = u1.id
+        LEFT JOIN users u2 ON fi.finder_id = u2.id
+        LEFT JOIN categories c1 ON li.category_id = c1.id
+        LEFT JOIN categories c2 ON fi.category_id = c2.id
+        LEFT JOIN locations l1 ON li.location_id = l1.id
+        LEFT JOIN locations l2 ON fi.location_id = l2.id
+        WHERE m.id = %s
+        ''',
+        (match_id,)
+    )
+    row = cursor.fetchone()
+    cursor.close()
+    if not row:
+        return None
+    row['generated'] = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+    return row
+
+
+def _email_match_report(db, match_id, trigger='admin'):
+    """Generate the match PDF and email it to the owner (with a finder copy).
+
+    Best-effort: returns (owner_ok, detail) and never raises. When SMTP is
+    not configured the message is logged to the console mailbox instead.
+    """
+    try:
+        from pdf_report import build_match_report_pdf
+        from mailer import send_email
+
+        data = _load_match_pdf_data(db, match_id)
+        if not data:
+            return (False, 'not-found')
+
+        pdf_bytes = build_match_report_pdf(data)
+        filename = f"FindMe-Match-{int(data['match_id']):05d}.pdf"
+        subject = f"FindMe: item match found ({data.get('lost_ref', '')})"
+        finder_name = data.get('finder_name')
+        body = (
+            f"Dear {data.get('owner_name') or 'owner'},\n\n"
+            "Good news - the FindMe AI has matched your reported item with "
+            "an item handed in / found on campus.\n\n"
+            f"Item you reported : {data.get('lost_name', '')} ({data.get('lost_ref', '')})\n"
+            f"Possible match    : {data.get('found_name', '')} ({data.get('found_ref', '')})\n"
+            f"Match confidence  : {data.get('score', 0)}% ({data.get('confidence_level', '')})\n"
+            f"Match status      : {data.get('status', '')}\n\n"
+            "The attached PDF report contains the full item comparison, the "
+            "locations/dates involved and who to contact.\n\n"
+            "Next steps:\n"
+            "1. Confirm the details are yours (serial number, unique marks).\n"
+            f"2. Contact the finder{' at ' + str(finder_name) if finder_name else ''} "
+            "or the university lost & found office.\n"
+            "3. Present this report and a student/staff ID when picking up your item.\n\n"
+            "- FindMe, Cavendish University Uganda (automated notification)"
+        )
+        attachment = [(filename, 'application/pdf', pdf_bytes)]
+
+        owner_ok, owner_detail = False, ''
+        owner_email = (data.get('owner_email') or '').strip()
+        if owner_email:
+            owner_ok, owner_detail = send_email(
+                owner_email, subject, body,
+                attachments=attachment,
+                reply_to=(data.get('finder_email') or '').strip() or None,
+            )
+        else:
+            owner_detail = 'no-owner-email'
+
+        # Finder gets the same evidence pack so they know what pending item
+        # must be handed over (and where) - useful when the finder is a
+        # staff member with the report at hand.
+        finder_email = (data.get('finder_email') or '').strip()
+        if finder_email and finder_email != owner_email:
+            send_email(finder_email, subject, body, attachments=attachment)
+
+        try:
+            log_activity(
+                session.get('user_id') or None,
+                'email_match_report',
+                f'Match {match_id} PDF ({trigger}) owner={owner_detail}',
+            )
+        except Exception:
+            logger.exception('Could not log match PDF email for %s', match_id)
+
+        return (owner_ok, owner_detail)
+    except Exception:
+        logger.exception('Could not email match report for match %s', match_id)
+        return (False, 'error')
+
+
+@app.route('/match/<int:match_id>/pdf')
+@login_required
+def match_pdf_download(match_id):
+    """Download the match report PDF (owner, finder or admin)."""
+    db = get_db()
+    cursor = db.cursor()
+    cursor.execute(
+        'SELECT li.reporter_id, fi.finder_id FROM matches m '
+        'JOIN lost_items li ON m.lost_item_id = li.id '
+        'JOIN found_items fi ON m.found_item_id = fi.id WHERE m.id = %s',
+        (match_id,)
+    )
+    access = cursor.fetchone()
+    cursor.close()
+    if not access:
+        abort(404)
+    me = session.get('user_id')
+    if not (session.get('role_id') == 3 or me in (access[0], access[1])):
+        abort(403)
+
+    from pdf_report import build_match_report_pdf
+    data = _load_match_pdf_data(db, match_id)
+    if not data:
+        abort(404)
+    pdf_bytes = build_match_report_pdf(data)
+    filename = f'FindMe-Match-{int(match_id):05d}.pdf'
+    return Response(
+        pdf_bytes,
+        mimetype='application/pdf',
+        headers={'Content-Disposition': f'attachment; filename="{filename}"'},
+    )
 
 
 # ==================== NOTIFICATIONS ====================
@@ -1868,6 +2077,33 @@ def admin_rerun_matches():
     return redirect(url_for('admin_matches'))
 
 
+@app.route('/admin/match/<int:match_id>/send-pdf', methods=['POST'])
+@login_required
+@admin_required
+def admin_send_match_pdf(match_id):
+    """One-click: email the match report PDF to the owner."""
+    db = get_db()
+    _ensure_match_schema(db)
+    ok, detail = _email_match_report(db, match_id, trigger='admin')
+
+    if ok:
+        flash('Match report PDF sent to the owner.', 'success')
+    elif detail == 'not-found':
+        flash('That match no longer exists.', 'danger')
+    elif detail == 'no-owner-email':
+        flash('The owner has no email on record. Use "Download PDF" on the match page to share it manually.', 'warning')
+    elif detail == 'smtp-not-configured':
+        flash('SMTP is not configured. Set SMTP_HOST/SMTP_USER/SMTP_PASSWORD/SMTP_FROM to email owners; '
+              'until then use "Download PDF".', 'warning')
+    else:
+        flash('Could not email the PDF right now - please try again.', 'danger')
+
+    target = request.referrer
+    if not target or 'send-pdf' in target:
+        return redirect(url_for('admin_matches'))
+    return redirect(target)
+
+
 @app.route('/admin/match/<int:match_id>/approve', methods=['POST'])
 @login_required
 @admin_required
@@ -1967,8 +2203,18 @@ def admin_approve_match(match_id):
     except Exception:
         logger.exception('Could not log approval of match %s', match_id)
 
+    # Automatic owner notification: generate the match report PDF and email
+    # it to the owner (finder gets a copy). Never blocks the approval.
+    pdf_status, pdf_detail = _email_match_report(db, match_id, trigger='approval')
+
     cursor.close()
     flash('Match approved successfully.', 'success')
+    if pdf_status:
+        flash('A match report PDF was emailed to the owner.', 'info')
+    elif pdf_detail == 'smtp-not-configured':
+        flash('SMTP is not configured - the PDF report is available via "Download PDF" on the match.', 'info')
+    elif pdf_detail == 'no-owner-email':
+        flash('The owner has no email on record - download the PDF to share it manually.', 'info')
     return redirect(url_for('admin_matches'))
 
 

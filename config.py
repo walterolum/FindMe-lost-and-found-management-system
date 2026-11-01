@@ -136,6 +136,17 @@ class Config:
     CLOUDINARY_API_KEY = _env('CLOUDINARY_API_KEY')
     CLOUDINARY_API_SECRET = _env('CLOUDINARY_API_SECRET')
 
+    # ---- Email (optional; used for match PDF reports) -------------------
+    # When SMTP is not configured, emails are printed to the server log and
+    # the PDF stays downloadable from the match page (nothing crashes).
+    SMTP_HOST = _env('SMTP_HOST')
+    SMTP_PORT = int(_env('SMTP_PORT', None, '587') or 587)
+    SMTP_USER = _env('SMTP_USER')
+    SMTP_PASSWORD = _env('SMTP_PASSWORD')
+    SMTP_FROM = _env('SMTP_FROM', 'MAIL_FROM')
+    SMTP_SECURE = (_env('SMTP_SECURE', None, '') or '').lower()  # 'ssl' | 'starttls' | '' (auto)
+    SMTP_TIMEOUT = int(_env('SMTP_TIMEOUT', None, '20') or 20)
+
     # ---- Flask ----------------------------------------------------------
     FLASK_ENV = os.environ.get('FLASK_ENV', 'development')
     MAX_CONTENT_LENGTH = 16 * 1024 * 1024  # 16 MB
@@ -146,6 +157,11 @@ class Config:
     SESSION_COOKIE_HTTPONLY = True
     SESSION_COOKIE_SAMESITE = 'Lax'
     SESSION_COOKIE_SECURE = is_production()
+
+    @classmethod
+    def smtp_configured(cls):
+        """True when real SMTP credentials are available."""
+        return bool(cls.SMTP_HOST and cls.SMTP_USER and cls.SMTP_PASSWORD and cls.SMTP_FROM)
 
     @classmethod
     def cloudinary_configured(cls):

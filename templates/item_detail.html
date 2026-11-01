@@ -13,6 +13,9 @@
 
     {% set img_idx = 18 if item_type == 'lost' else 19 %}
     {% set status_idx = 20 if item_type == 'lost' else 21 %}
+    {% set detected_idx = 25 if item_type == 'lost' else 26 %}
+    {% set lat_idx = 26 if item_type == 'lost' else 27 %}
+    {% set lng_idx = 27 if item_type == 'lost' else 28 %}
 
     <div class="page-header">
         <h1><i class="fas fa-{{ 'exclamation-triangle' if item_type == 'lost' else 'search' }}"></i> {{ item[3] }}</h1>
@@ -56,12 +59,18 @@
                 <tr><th>Time Lost</th><td>{{ item[14] or 'N/A' }}</td></tr>
                 <tr><th>Location</th><td>{{ loc_map.get(item[15], 'N/A') }}</td></tr>
                 <tr><th>Location Detail</th><td>{{ item[16] or 'N/A' }}</td></tr>
+                {% if item[detected_idx] %}
+                <tr><th><i class="fas fa-location-crosshairs"></i> GPS Detected</th><td>{{ item[detected_idx] }}{% if item[lat_idx] is not none and item[lng_idx] is not none %} <small class="text-muted">({{ item[lat_idx] }}, {{ item[lng_idx] }})</small>{% endif %}</td></tr>
+                {% endif %}
                 <tr><th>Additional Details</th><td>{{ item[17] or 'N/A' }}</td></tr>
                 {% else %}
                 <tr><th>Date Found</th><td>{{ item[13] }}</td></tr>
                 <tr><th>Time Found</th><td>{{ item[14] or 'N/A' }}</td></tr>
                 <tr><th>Location Found</th><td>{{ loc_map.get(item[15], 'N/A') }}</td></tr>
                 <tr><th>Location Detail</th><td>{{ item[16] or 'N/A' }}</td></tr>
+                {% if item[detected_idx] %}
+                <tr><th><i class="fas fa-location-crosshairs"></i> GPS Detected</th><td>{{ item[detected_idx] }}{% if item[lat_idx] is not none and item[lng_idx] is not none %} <small class="text-muted">({{ item[lat_idx] }}, {{ item[lng_idx] }})</small>{% endif %}</td></tr>
+                {% endif %}
                 <tr><th>Current Location</th><td>{{ item[18] or 'N/A' }}</td></tr>
                 <tr><th>Additional Details</th><td>{{ item[17] or 'N/A' }}</td></tr>
                 {% endif %}
