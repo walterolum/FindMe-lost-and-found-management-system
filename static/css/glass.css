@@ -504,20 +504,24 @@ a:hover { color: var(--link-hover); }
     padding-bottom: 0.14em;   /* room for descenders (g, ?) */
     margin-bottom: -0.14em;
 }
-.ht-word,
+.ht-l,
 .ht-ch {
     display: inline-block;
-    will-change: transform;
+    will-change: transform, opacity;
 }
 
-/* 1 ── "Lost Something?" */
-.ht-word {
-    transform: translateY(108%);
-    animation: htRise calc(1.1s * var(--ht-slow)) cubic-bezier(0.19, 1, 0.22, 1) calc(var(--d, 0s) * var(--ht-slow)) both;
+/* 1 ── "Lost Something?" — letter by letter, a rising wave.
+   --l is the letter's position in the phrase (0, 1, 2 …). */
+.ht-l {
+    opacity: 0;
+    transform: translateY(110%) rotate(8deg);
+    transform-origin: 0% 100%;
+    animation: htRise calc(0.9s * var(--ht-slow)) cubic-bezier(0.19, 1, 0.22, 1) calc((0.1s + var(--l, 0) * 0.042s) * var(--ht-slow)) both;
 }
 @keyframes htRise {
-    from { transform: translateY(108%); }
-    to   { transform: translateY(0); }
+    0%   { opacity: 0; transform: translateY(110%) rotate(8deg); }
+    35%  { opacity: 1; }
+    100% { opacity: 1; transform: translateY(0) rotate(0deg); }
 }
 
 /* 2 ── "Find It." letters: silver, revealed by the lens */
@@ -661,7 +665,7 @@ a:hover { color: var(--link-hover); }
 
 /* Reduced motion: show the finished headline straight away */
 @media (prefers-reduced-motion: reduce) {
-    .ht-word,
+    .ht-l,
     .ht-ch,
     .hero-find,
     .hero-find::after,
