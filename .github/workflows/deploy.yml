@@ -24,15 +24,26 @@ jobs:
       - run: python -c "from wsgi import application; print('wsgi ok')"
       - run: python -c "from wsgi import application; c=application.test_client(); assert c.get('/health').status_code==200; print('health ok')"
 
+  # Secrets can't be read in a job-level `if:`, so each job checks for its
+  # secret in a step and skips the deploy (green, with a notice) when unset.
   railway:
     needs: build
-    if: ${{ secrets.RAILWAY_TOKEN != '' }}
     runs-on: ubuntu-latest
     steps:
+      - name: Check Railway secret
+        id: cfg
+        env:
+          RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
+        run: |
+          if [ -n "$RAILWAY_TOKEN" ]; then echo "on=true" >> "$GITHUB_OUTPUT"
+          else echo "on=false" >> "$GITHUB_OUTPUT"; echo "::notice::RAILWAY_TOKEN not set - skipping Railway"; fi
       - uses: actions/checkout@v4
+        if: steps.cfg.outputs.on == 'true'
       - name: Install Railway CLI
+        if: steps.cfg.outputs.on == 'true'
         run: npm install -g @railway/cli
       - name: Deploy to Railway
+        if: steps.cfg.outputs.on == 'true'
         env:
           RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
         run: |
@@ -41,18 +52,23 @@ jobs:
 
   render:
     needs: build
-    if: ${{ secrets.RENDER_API_KEY != '' && secrets.RENDER_SERVICE_ID != '' }}
     runs-on: ubuntu-latest
     steps:
-      - name: Trigger Render Deploy
+      - name: Check Render secrets
+        id: cfg
         env:
           RENDER_API_KEY: ${{ secrets.RENDER_API_KEY }}
           RENDER_SERVICE_ID: ${{ secrets.RENDER_SERVICE_ID }}
         run: |
-          curl -X POST "https://api.render.com/v1/services/${RENDER_SERVICE_ID}/deploys" \
-            -H "Authorization: Bearer ${RENDER_API_KEY}" \
-            -H "Content-Type: application/json" \
-            -d '{"clearCache": false}'
+          if [ -n "$RENDER_API_KEY" ] && [ -n "$RENDER_SERVICE_ID" ]; then echo "on=true" >> "$GITHUB_OUTPUT"
+          else echo "on=false" >> "$GITHUB_OUTPUT"; echo "::notice::RENDER_API_KEY / RENDER_SERVICE_ID not set - Render's own auto-deploy handles this push"; fi
+      - name: Trigger Render Deploy
+        if: steps.cfg.outputs.on == 'true'
+        env:
+          RENDER_API_KEY: ${{ secrets.RENDER_API_KEY }}
+          RENDER_SERVICE_ID: ${{ secrets.RENDER_SERVICE_ID }}
+        run: |
+          curl -fsS -X POST "https://api.render.com/v1/services/${RENDER_SERVICE_ID}/deploys"             -H "Authorization: Bearer ${RENDER_API_KEY}"             -H "Content-Type: application/json"             -d '{"clearCache": "do_not_clear"}'
           echo "Render deploy triggered"
 
   # PythonAnywhere now handled by dedicated workflow .github/workflows/pythonanywhere.yml

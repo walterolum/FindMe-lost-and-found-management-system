@@ -24,18 +24,25 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Validate secrets
+        id: secrets
         env:
           PA_API_TOKEN: ${{ secrets.PA_API_TOKEN }}
           PA_USERNAME: ${{ secrets.PA_USERNAME }}
         run: |
           set -euo pipefail
-          [[ -n "$PA_API_TOKEN" ]] || { echo "::error::PA_API_TOKEN secret is empty"; exit 1; }
-          [[ -n "$PA_USERNAME" ]] || { echo "::error::PA_USERNAME secret is empty"; exit 1; }
+          # PythonAnywhere is optional: skip cleanly (green) when it isn't set up.
+          if [[ -z "$PA_API_TOKEN" || -z "$PA_USERNAME" ]]; then
+            echo "::notice::PythonAnywhere secrets not set - skipping this deploy (Render deploys separately)."
+            echo "configured=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          echo "configured=true" >> "$GITHUB_OUTPUT"
           echo "Secrets validated for user $PA_USERNAME"
           # Mask token length for log
           echo "Token length: ${#PA_API_TOKEN}"
 
       - name: Deploy via PythonAnywhere API (create console, run deploy.sh, reload)
+        if: steps.secrets.outputs.configured == 'true'
         env:
           PA_API_TOKEN: ${{ secrets.PA_API_TOKEN }}
           PA_USERNAME: ${{ secrets.PA_USERNAME }}
@@ -142,7 +149,7 @@ jobs:
           echo "Deployment to PythonAnywhere complete for $PA_DOMAIN"
 
       - name: Summary
-        if: always()
+        if: always() && steps.secrets.outputs.configured == 'true'
         run: |
           echo "### PythonAnywhere Deploy Summary" >> $GITHUB_STEP_SUMMARY
           echo "- Repo: ${{ github.repository }} @ ${{ github.sha }}" >> $GITHUB_STEP_SUMMARY
