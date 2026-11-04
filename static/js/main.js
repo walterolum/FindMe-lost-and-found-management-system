@@ -27,6 +27,11 @@
             if (icon) {
                 icon.className = theme === 'dark' ? 'fas fa-sun' : 'fas fa-moon';
             }
+            // Mobile menu shows a text label next to the icon
+            var label = btn.querySelector('.theme-label');
+            if (label) {
+                label.textContent = theme === 'dark' ? 'Light mode' : 'Dark mode';
+            }
         });
     }
 
@@ -45,6 +50,7 @@
         document.querySelectorAll('.theme-toggle').forEach(function(btn) {
             btn.addEventListener('click', toggleTheme);
         });
+        updateThemeIcon(document.documentElement.getAttribute('data-theme') || 'dark');
 
         // Sidebar toggle (mobile / tablet)
         var sidebarToggle = document.getElementById('sidebarToggle');
@@ -110,16 +116,31 @@
         // Public nav toggle (mobile)
         var navToggle = document.getElementById('navToggle');
         var navLinks = document.getElementById('navLinks');
+        var navBackdrop = document.getElementById('navBackdrop');
         if (navToggle && navLinks) {
+            var setNavOpen = function(open) {
+                navLinks.classList.toggle('active', open);
+                navToggle.setAttribute('aria-expanded', open ? 'true' : 'false');
+                navToggle.setAttribute('aria-label', open ? 'Close menu' : 'Open menu');
+                if (navBackdrop) navBackdrop.classList.toggle('active', open);
+                document.documentElement.classList.toggle('nav-open', open);
+            };
             navToggle.addEventListener('click', function() {
-                var isOpen = navLinks.classList.toggle('active');
-                navToggle.setAttribute('aria-expanded', isOpen ? 'true' : 'false');
+                setNavOpen(!navLinks.classList.contains('active'));
             });
             navLinks.querySelectorAll('a').forEach(function(link) {
-                link.addEventListener('click', function() {
-                    navLinks.classList.remove('active');
-                    navToggle.setAttribute('aria-expanded', 'false');
-                });
+                link.addEventListener('click', function() { setNavOpen(false); });
+            });
+            if (navBackdrop) navBackdrop.addEventListener('click', function() { setNavOpen(false); });
+            document.addEventListener('keydown', function(e) {
+                if (e.key === 'Escape' && navLinks.classList.contains('active')) {
+                    setNavOpen(false);
+                    navToggle.focus();
+                }
+            });
+            // Close when the screen grows to desktop size (rotation, resize)
+            window.addEventListener('resize', function() {
+                if (window.innerWidth > 768 && navLinks.classList.contains('active')) setNavOpen(false);
             });
         }
 

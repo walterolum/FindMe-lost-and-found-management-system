@@ -713,3 +713,174 @@ a:hover { color: var(--link-hover); }
     body::before, body::after { display: none; }
     body, html { background: #fff; }
 }
+
+/* ═══════════════════════════════════════════════════════════
+   PUBLIC NAVBAR — desktop links + mobile menu sheet
+   ═══════════════════════════════════════════════════════════ */
+/* Mobile-only parts are hidden on desktop */
+.nav-links .nav-ico,
+.nav-links .nav-chev,
+.nav-links .nav-cta-ico,
+.nav-links .theme-label { display: none; }
+.nav-links { margin: 0; padding: 0; }
+.nav-links a.nav-link.is-active { color: var(--text-primary); background: var(--bg-tertiary); }
+.nav-backdrop { display: none; }
+
+/* Hamburger that morphs into an X */
+.nav-toggle {
+    width: 44px;
+    height: 44px;
+    padding: 0;
+    border-radius: 12px;
+    border: 1px solid var(--border);
+    background: var(--surface);
+    -webkit-backdrop-filter: blur(10px);
+    backdrop-filter: blur(10px);
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: background var(--duration-normal) var(--ease-out), border-color var(--duration-normal) var(--ease-out);
+}
+.nav-toggle-bars { position: relative; display: block; width: 20px; height: 14px; }
+.nav-toggle-bars span {
+    position: absolute;
+    left: 0;
+    width: 100%;
+    height: 2px;
+    border-radius: 2px;
+    background: var(--text-primary);
+    transition: transform 0.3s var(--ease-out), opacity 0.2s ease, top 0.3s var(--ease-out);
+}
+.nav-toggle-bars span:nth-child(1) { top: 0; }
+.nav-toggle-bars span:nth-child(2) { top: 6px; }
+.nav-toggle-bars span:nth-child(3) { top: 12px; }
+.nav-toggle[aria-expanded="true"] { background: var(--bg-tertiary); }
+.nav-toggle[aria-expanded="true"] .nav-toggle-bars span:nth-child(1) { top: 6px; transform: rotate(45deg); }
+.nav-toggle[aria-expanded="true"] .nav-toggle-bars span:nth-child(2) { opacity: 0; transform: scaleX(0.3); }
+.nav-toggle[aria-expanded="true"] .nav-toggle-bars span:nth-child(3) { top: 6px; transform: rotate(-45deg); }
+.nav-toggle:focus-visible { outline: 2px solid var(--border-focus); outline-offset: 2px; }
+
+@media (max-width: 768px) {
+    .navbar .nav-container { padding: 0 var(--space-4); }
+    .nav-toggle { display: inline-flex; }
+
+    /* The sheet: always rendered so it can animate open/closed */
+    .nav-links,
+    .nav-links.active {
+        display: flex;
+        flex-direction: column;
+        align-items: stretch;
+        gap: 0;
+        position: absolute;
+        top: calc(100% + 8px);
+        left: 12px;
+        right: 12px;
+        padding: 10px;
+        border-radius: 20px;
+        border: 1px solid var(--border);
+        background: var(--surface-elevated);
+        -webkit-backdrop-filter: blur(24px) saturate(1.2);
+        backdrop-filter: blur(24px) saturate(1.2);
+        box-shadow: 0 1px 0 rgba(255, 255, 255, 0.08) inset, 0 24px 60px rgba(11, 19, 38, 0.45);
+        z-index: var(--z-dropdown);
+        max-height: calc(100dvh - var(--navbar-height) - 24px);
+        overflow-y: auto;
+        opacity: 0;
+        visibility: hidden;
+        transform: translateY(-8px) scale(0.98);
+        transform-origin: top center;
+        transition: opacity 0.22s ease, transform 0.28s var(--ease-out), visibility 0s linear 0.28s;
+    }
+    .nav-links.active {
+        opacity: 1;
+        visibility: visible;
+        transform: none;
+        transition: opacity 0.22s ease, transform 0.28s var(--ease-out), visibility 0s;
+    }
+
+    /* Link rows */
+    .nav-links li { list-style: none; }
+    .nav-links li + li:not(.nav-cta):not(.nav-theme) { border-top: 1px solid var(--border-light); }
+    .nav-links a.nav-link {
+        display: flex;
+        align-items: center;
+        gap: 14px;
+        min-height: 56px;
+        padding: 8px 10px;
+        border-radius: 14px;
+        font-size: 16px;
+        font-weight: 600;
+        color: var(--text-primary);
+    }
+    .nav-links a.nav-link:hover,
+    .nav-links a.nav-link:active { background: var(--bg-tertiary); }
+    .nav-links a.nav-link.is-active { background: var(--primary-50); }
+    .nav-links .nav-ico {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 38px;
+        height: 38px;
+        flex: 0 0 38px;
+        border-radius: 11px;
+        font-size: 15px;
+        color: var(--primary-light);
+        background: var(--primary-50);
+        border: 1px solid var(--border-light);
+    }
+    .nav-links a.nav-link.is-active .nav-ico { background: var(--gradient-primary); color: #fff; border-color: transparent; }
+    .nav-links .nav-chev { display: inline-block; margin-left: auto; font-size: 12px; color: var(--text-faint); }
+
+    /* Get Started: full-width primary button */
+    .nav-links .nav-cta { margin-top: 10px; }
+    .nav-links .nav-cta .btn-nav {
+        display: flex !important;
+        align-items: center;
+        justify-content: center;
+        gap: 10px;
+        width: 100%;
+        min-height: 52px;
+        padding: 0 20px !important;
+        border-radius: 14px !important;
+        font-size: 16px;
+        transform: none;
+    }
+    .nav-links .nav-cta-ico { display: inline-block; font-size: 14px; }
+
+    /* Theme switch: full-width secondary button with a label */
+    .nav-links .nav-theme { margin-top: 8px; }
+    .nav-links .nav-theme .theme-toggle {
+        width: 100%;
+        height: 48px;
+        margin: 0;
+        gap: 10px;
+        border-radius: 14px;
+        font-size: 15px;
+        transform: none;
+    }
+    .nav-links .nav-theme .theme-toggle:hover { transform: none; }
+    .nav-links .theme-label { display: inline; font-weight: 600; font-size: 15px; }
+
+    /* Dim + blur the page behind the open menu */
+    .nav-backdrop {
+        display: block;
+        position: fixed;
+        inset: 0;
+        z-index: calc(var(--z-sticky) - 1);
+        background: rgba(11, 19, 38, 0.5);
+        -webkit-backdrop-filter: blur(4px);
+        backdrop-filter: blur(4px);
+        opacity: 0;
+        visibility: hidden;
+        transition: opacity 0.25s ease, visibility 0s linear 0.25s;
+    }
+    .nav-backdrop.active { opacity: 1; visibility: visible; transition: opacity 0.25s ease, visibility 0s; }
+    html.nav-open, html.nav-open body { overflow: hidden; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .nav-links, .nav-links.active, .nav-backdrop, .nav-toggle-bars span { transition: none !important; }
+}
+@media (max-width: 768px) {
+    [data-theme="dark"] .nav-links a.nav-link.is-active .nav-ico { background: linear-gradient(135deg, #6A7FA8 0%, #2E4470 100%); }
+}

@@ -12,8 +12,8 @@
     <link rel="preconnect" href="https://cdnjs.cloudflare.com" crossorigin>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}?v=20261108a">
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/glass.css') }}?v=20261108a">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}?v=20261109a">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/glass.css') }}?v=20261109a">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" media="print" onload="this.media='all'">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" media="print" onload="this.media='all'">
     <noscript><link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css"><link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet"></noscript>
@@ -105,16 +105,17 @@
             <a href="{{ url_for('index') }}" class="nav-brand">
                 <i class="fas fa-magnifying-glass"></i> FindMe
             </a>
-            <button class="nav-toggle" id="navToggle" aria-label="Open menu" aria-controls="navLinks" aria-expanded="false"><i class="fas fa-bars"></i></button>
+            <button class="nav-toggle" id="navToggle" type="button" aria-label="Open menu" aria-controls="navLinks" aria-expanded="false"><span class="nav-toggle-bars" aria-hidden="true"><span></span><span></span><span></span></span></button>
             <ul class="nav-links" id="navLinks">
-                <li><a href="{{ url_for('index') }}">Home</a></li>
-                <li><a href="{{ url_for('about') }}">About</a></li>
-                <li><a href="{{ url_for('login') }}">Login</a></li>
-                <li><a href="{{ url_for('register') }}" class="btn-nav">Get Started</a></li>
-                <li><button type="button" class="theme-toggle" title="Toggle theme"><i class="fas fa-moon"></i></button></li>
+                <li><a href="{{ url_for('index') }}" class="nav-link{% if request.endpoint == 'index' %} is-active{% endif %}"><i class="fas fa-house nav-ico" aria-hidden="true"></i><span>Home</span><i class="fas fa-chevron-right nav-chev" aria-hidden="true"></i></a></li>
+                <li><a href="{{ url_for('about') }}" class="nav-link{% if request.endpoint == 'about' %} is-active{% endif %}"><i class="fas fa-circle-info nav-ico" aria-hidden="true"></i><span>About</span><i class="fas fa-chevron-right nav-chev" aria-hidden="true"></i></a></li>
+                <li><a href="{{ url_for('login') }}" class="nav-link{% if request.endpoint == 'login' %} is-active{% endif %}"><i class="fas fa-right-to-bracket nav-ico" aria-hidden="true"></i><span>Login</span><i class="fas fa-chevron-right nav-chev" aria-hidden="true"></i></a></li>
+                <li class="nav-cta"><a href="{{ url_for('register') }}" class="btn-nav"><span>Get Started</span><i class="fas fa-arrow-right nav-cta-ico" aria-hidden="true"></i></a></li>
+                <li class="nav-theme"><button type="button" class="theme-toggle" title="Toggle theme" aria-label="Toggle theme"><i class="fas fa-moon"></i><span class="theme-label">Dark mode</span></button></li>
             </ul>
         </div>
     </nav>
+    <div class="nav-backdrop" id="navBackdrop" aria-hidden="true"></div>
     {% else %}
     {# ── Minimal top bar for authenticated users ── #}
     <nav class="navbar navbar-auth" id="publicNavbar">
@@ -173,7 +174,7 @@
     </footer>
     {% endif %}
 
-    <script src="{{ url_for('static', filename='js/main.js') }}?v=20261031b"></script>
+    <script src="{{ url_for('static', filename='js/main.js') }}?v=20261109a"></script>
     {% block scripts %}{% endblock %}
 </body>
 </html>
