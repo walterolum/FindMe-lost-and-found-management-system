@@ -12,6 +12,20 @@ FindMe is a centralized digital Lost and Found management platform for Cavendish
 - Privacy protection for sensitive information
 - A complete recovery tracking system
 
+## Project Team
+
+FindMe was built by a team of students at Cavendish University Uganda.
+
+| Name | Role |
+|---|---|
+| Walter Olum ([@walterolum](https://github.com/walterolum)) | Project lead & lead developer |
+| Comfort Judith | Contributor |
+| Muzoo Muhwezi Coleb | Contributor |
+| Muhindo Vicent | Contributor |
+| Masereka Benet | Contributor |
+| Mirembe Martha | Contributor |
+| Alinaitwe Dorothy | Contributor |
+
 ## Tech Stack
 
 | Layer | Technology |
