@@ -19,10 +19,10 @@ FindMe was built by a team of students at Cavendish University Uganda.
 | Name | Role |
 |---|---|
 | Walter Olum ([@walterolum](https://github.com/walterolum)) | Project lead & lead developer |
-| Comfort Judith | Contributor |
+| Comfort Judith ([@Comfort-win2004](https://github.com/Comfort-win2004)) | Contributor |
 | Muzoo Muhwezi Coleb | Contributor |
 | Muhindo Vicent | Contributor |
-| Masereka Benet | Contributor |
+| Masereka Benet ([@MASEREKA-BENET](https://github.com/MASEREKA-BENET)) | Contributor |
 | Mirembe Martha | Contributor |
 | Alinaitwe Dorothy | Contributor |
 
